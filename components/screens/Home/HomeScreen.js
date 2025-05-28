@@ -15,12 +15,15 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../../services/AuthContext';
 import { recipeService } from '../../../services/recipeService';
-import SharePostComponent from '../../common/SharePostComponent';
-import CreatePostComponent from '../../common/CreatePostComponent';
 import PostComponent from '../../common/PostComponent';
+import CreatePostComponent from '../../common/CreatePostComponent';
+import SharePostComponent from '../../common/SharePostComponent';
+
 
 const HomeScreen = ({ currentUser }) => {
+  const { logout } = useAuth(); // הוסף את זה
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -83,6 +86,28 @@ const HomeScreen = ({ currentUser }) => {
     setRefreshing(true);
     loadPosts();
   }, [loadPosts]);
+
+  // התנתקות
+  const handleLogout = useCallback(() => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Logout', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+            } catch (error) {
+              Alert.alert('Error', 'Failed to logout');
+            }
+          }
+        }
+      ]
+    );
+  }, [logout]);
 
   // טיפול ביצירת פוסט חדש
   const handlePostCreated = useCallback((newPost) => {
@@ -256,6 +281,10 @@ const HomeScreen = ({ currentUser }) => {
           <TouchableOpacity style={styles.headerButton}>
             <Ionicons name="notifications-outline" size={24} color="#333" />
           </TouchableOpacity>
+          {/* כפתור התנתקות */}
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
+          </TouchableOpacity>
         </View>
       </View>
       
@@ -359,6 +388,10 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   headerButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
+  logoutButton: {
     padding: 8,
     marginLeft: 8,
   },
