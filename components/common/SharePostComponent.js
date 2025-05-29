@@ -13,8 +13,22 @@ import {
   SafeAreaView
 } from 'react-native';
 
+// צבעי Cooksy
+const COOKSY_COLORS = {
+  primary: '#F5A623',
+  secondary: '#4ECDC4',
+  accent: '#1F3A93',
+  background: '#FFF8F0',
+  white: '#FFFFFF',
+  text: '#2C3E50',
+  textLight: '#7F8C8D',
+  border: '#E8E8E8',
+  success: '#27AE60',
+  danger: '#E74C3C',
+};
+
 // פתרון פשוט - תחליף לאיקונים ללא ספריות חיצוניות
-const SimpleIcon = ({ type, size = 24, color = '#333' }) => {
+const SimpleIcon = ({ type, size = 24, color = COOKSY_COLORS.text }) => {
   const icons = {
     close: '✕',
     check: '✓',
@@ -56,7 +70,7 @@ const SharePostComponent = ({
         setFriends(realFriends);
         setFilteredFriends(realFriends);
         setLoading(false);
-      }, 500); // זמן קצר יותר כיוון שאין נתונים לטעון
+      }, 500);
     };
 
     if (visible) {
@@ -93,19 +107,17 @@ const SharePostComponent = ({
 
   const handleShare = () => {
     if (selectedFriends.length === 0) {
-      Alert.alert('Error', 'Please select at least one friend to share with.');
+      Alert.alert('No Friends Selected', 'Please select at least one friend to share this delicious recipe with!');
       return;
     }
 
-    // כרגע אין חברים, אז זה לא יקרה
-    // בהמשך הפרויקט כשיהיו חברים אמיתיים זה יעבוד
-    if (post.privacy === 'private' && post.userId !== currentUserId) {
-      Alert.alert('Cannot share', 'This post is private and cannot be shared.');
+    if (post?.privacy === 'private' && post?.userId !== currentUserId) {
+      Alert.alert('Cannot Share', 'This recipe is private and cannot be shared.');
       return;
     }
 
     const shareData = {
-      postId: post.id,
+      postId: post?.id || post?._id,
       recipients: selectedFriends,
       message: message,
       sharedAt: new Date().toISOString(),
@@ -126,7 +138,7 @@ const SharePostComponent = ({
       onClose();
     }
 
-    Alert.alert('Success', 'Post shared successfully!');
+    Alert.alert('Recipe Shared! 🍳', 'Your delicious recipe has been shared successfully!');
   };
   
   const renderFriendItem = ({ item }) => (
@@ -149,27 +161,42 @@ const SharePostComponent = ({
         <SimpleIcon 
           type={selectedFriends.includes(item.id) ? "check" : "circle"} 
           size={24} 
-          color={selectedFriends.includes(item.id) ? "#075eec" : "#ddd"} 
+          color={selectedFriends.includes(item.id) ? COOKSY_COLORS.primary : COOKSY_COLORS.border} 
         />
       </View>
     </TouchableOpacity>
   );
 
-  const renderPostPreview = () => (
-    <View style={styles.postPreview}>
-      <View style={styles.previewHeader}>
-        <Text style={styles.previewTitle}>Preview</Text>
+  const renderPostPreview = () => {
+    if (!post) {
+      return (
+        <View style={styles.postPreview}>
+          <Text style={styles.previewTitle}>No Recipe Selected</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.postPreview}>
+        <View style={styles.previewHeader}>
+          <Text style={styles.previewTitle}>🍳 Recipe Preview</Text>
+        </View>
+        <View style={styles.previewContent}>
+          {post.image && (
+            <Image source={{ uri: post.image }} style={styles.previewImage} />
+          )}
+          <View style={styles.previewTextContainer}>
+            <Text numberOfLines={1} style={styles.previewRecipeTitle}>
+              {post.title || 'Untitled Recipe'}
+            </Text>
+            <Text numberOfLines={2} style={styles.previewText}>
+              {post.description || post.text || 'No description available'}
+            </Text>
+          </View>
+        </View>
       </View>
-      <View style={styles.previewContent}>
-        {post.image && (
-          <Image source={{ uri: post.image }} style={styles.previewImage} />
-        )}
-        <Text numberOfLines={2} style={styles.previewText}>
-          {post.text}
-        </Text>
-      </View>
-    </View>
-  );
+    );
+  };
 
   if (!visible) return null;
 
@@ -183,9 +210,9 @@ const SharePostComponent = ({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <SimpleIcon type="close" size={24} color="#333" />
+            <SimpleIcon type="close" size={24} color={COOKSY_COLORS.accent} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Share Post</Text>
+          <Text style={styles.headerTitle}>Share Recipe</Text>
           <TouchableOpacity 
             onPress={handleShare} 
             disabled={selectedFriends.length === 0}
@@ -208,7 +235,8 @@ const SharePostComponent = ({
         <View style={styles.messageContainer}>
           <TextInput
             style={styles.messageInput}
-            placeholder="Add a message..."
+            placeholder="Add a personal message with this recipe..."
+            placeholderTextColor={COOKSY_COLORS.textLight}
             value={message}
             onChangeText={setMessage}
             multiline
@@ -219,7 +247,7 @@ const SharePostComponent = ({
         {/* Friends Selection */}
         <View style={styles.friendsContainer}>
           <View style={styles.friendsHeader}>
-            <Text style={styles.sectionTitle}>Share with</Text>
+            <Text style={styles.sectionTitle}>Share with Friends</Text>
             <TouchableOpacity onPress={selectAllFriends}>
               <Text style={styles.selectAllText}>
                 {selectedFriends.length === filteredFriends.length 
@@ -231,10 +259,11 @@ const SharePostComponent = ({
 
           {/* Search Bar */}
           <View style={styles.searchContainer}>
-            <SimpleIcon type="search" size={20} color="#999" />
+            <SimpleIcon type="search" size={20} color={COOKSY_COLORS.textLight} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search friends..."
+              placeholderTextColor={COOKSY_COLORS.textLight}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
@@ -242,7 +271,7 @@ const SharePostComponent = ({
 
           {/* Friends List */}
           {loading ? (
-            <ActivityIndicator size="large" color="#075eec" style={styles.loader} />
+            <ActivityIndicator size="large" color={COOKSY_COLORS.primary} style={styles.loader} />
           ) : (
             <FlatList
               data={filteredFriends}
@@ -251,11 +280,12 @@ const SharePostComponent = ({
               showsVerticalScrollIndicator={false}
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyIcon}>👥</Text>
                   <Text style={styles.emptyText}>
                     {searchQuery ? "No friends match your search" : "You don't have any friends yet"}
                   </Text>
                   <Text style={styles.emptySubText}>
-                    {!searchQuery && "Add friends to start sharing posts with them!"}
+                    {!searchQuery && "Add friends to start sharing delicious recipes with them!"}
                   </Text>
                 </View>
               }
@@ -279,7 +309,7 @@ const SharePostComponent = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: COOKSY_COLORS.background,
   },
   header: {
     flexDirection: 'row',
@@ -288,37 +318,41 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#e1e1e1',
+    borderBottomColor: COOKSY_COLORS.border,
+    backgroundColor: COOKSY_COLORS.white,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: COOKSY_COLORS.text,
   },
   closeButton: {
-    padding: 5,
+    padding: 8,
+    backgroundColor: COOKSY_COLORS.background,
+    borderRadius: 20,
   },
   shareButton: {
-    backgroundColor: '#075eec',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    backgroundColor: COOKSY_COLORS.primary,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: 20,
   },
   shareButtonText: {
-    color: '#fff',
+    color: COOKSY_COLORS.white,
     fontWeight: '600',
     fontSize: 14,
   },
   disabledButton: {
-    backgroundColor: '#e1e1e1',
+    backgroundColor: COOKSY_COLORS.border,
   },
   disabledButtonText: {
-    color: '#999',
+    color: COOKSY_COLORS.textLight,
   },
   postPreview: {
     borderBottomWidth: 1,
-    borderBottomColor: '#e1e1e1',
+    borderBottomColor: COOKSY_COLORS.border,
     padding: 15,
+    backgroundColor: COOKSY_COLORS.white,
   },
   previewHeader: {
     marginBottom: 10,
@@ -326,7 +360,7 @@ const styles = StyleSheet.create({
   previewTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: COOKSY_COLORS.text,
   },
   previewContent: {
     flexDirection: 'row',
@@ -335,33 +369,46 @@ const styles = StyleSheet.create({
   previewImage: {
     width: 60,
     height: 60,
-    borderRadius: 5,
-    marginRight: 10,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  previewTextContainer: {
+    flex: 1,
+  },
+  previewRecipeTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COOKSY_COLORS.text,
+    marginBottom: 4,
   },
   previewText: {
-    flex: 1,
     fontSize: 14,
-    color: '#333',
+    color: COOKSY_COLORS.textLight,
+    lineHeight: 18,
   },
   messageContainer: {
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#e1e1e1',
+    borderBottomColor: COOKSY_COLORS.border,
+    backgroundColor: COOKSY_COLORS.white,
   },
   messageInput: {
     fontSize: 15,
     minHeight: 40,
     maxHeight: 80,
-    borderWidth: 1,
-    borderColor: '#e1e1e1',
-    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: COOKSY_COLORS.border,
+    borderRadius: 12,
     paddingHorizontal: 15,
     paddingVertical: 8,
-    textAlignVertical: 'center',
+    textAlignVertical: 'top',
+    backgroundColor: COOKSY_COLORS.background,
+    color: COOKSY_COLORS.text,
   },
   friendsContainer: {
     flex: 1,
     padding: 15,
+    backgroundColor: COOKSY_COLORS.white,
   },
   friendsHeader: {
     flexDirection: 'row',
@@ -372,37 +419,42 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: COOKSY_COLORS.text,
   },
   selectAllText: {
     fontSize: 14,
-    color: '#075eec',
+    color: COOKSY_COLORS.secondary,
     fontWeight: '500',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f2f5',
-    borderRadius: 20,
+    backgroundColor: COOKSY_COLORS.background,
+    borderRadius: 12,
     paddingHorizontal: 15,
     marginBottom: 15,
+    borderWidth: 1,
+    borderColor: COOKSY_COLORS.border,
   },
   searchInput: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 12,
     fontSize: 15,
     marginLeft: 10,
+    color: COOKSY_COLORS.text,
   },
   friendItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f2f5',
+    borderBottomColor: COOKSY_COLORS.border,
   },
   selectedFriendItem: {
-    backgroundColor: '#f0f7ff',
+    backgroundColor: COOKSY_COLORS.background,
+    borderRadius: 8,
+    paddingHorizontal: 8,
   },
   friendInfo: {
     flexDirection: 'row',
@@ -412,12 +464,14 @@ const styles = StyleSheet.create({
     width: 45,
     height: 45,
     borderRadius: 22.5,
-    marginRight: 10,
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: COOKSY_COLORS.primary,
   },
   friendName: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#333',
+    color: COOKSY_COLORS.text,
   },
   rightSection: {
     flexDirection: 'row',
@@ -427,41 +481,53 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#4caf50',
+    backgroundColor: COOKSY_COLORS.success,
     marginRight: 10,
   },
   loader: {
     marginTop: 40,
   },
-  emptyText: {
-    textAlign: 'center',
-    marginTop: 40,
-    color: '#999',
-    fontSize: 16,
-    fontWeight: '500',
-  },
   emptyContainer: {
     alignItems: 'center',
-    marginTop: 40,
+    marginTop: 60,
+    paddingHorizontal: 20,
+  },
+  emptyIcon: {
+    fontSize: 60,
+    marginBottom: 16,
+    opacity: 0.5,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: COOKSY_COLORS.textLight,
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
   },
   emptySubText: {
     textAlign: 'center',
-    marginTop: 8,
-    color: '#bbb',
+    color: COOKSY_COLORS.textLight,
     fontSize: 14,
+    lineHeight: 20,
   },
   selectionCounter: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 30,
     alignSelf: 'center',
-    backgroundColor: '#075eec',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+    backgroundColor: COOKSY_COLORS.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   counterText: {
-    color: '#fff',
+    color: COOKSY_COLORS.white,
     fontWeight: '600',
+    fontSize: 14,
   },
 });
 

@@ -12,6 +12,20 @@ import {
 import { authService } from '../../../services/authService';
 import EmailInput from '../../common/EmailInput';
 
+// צבעי Cooksy
+const COOKSY_COLORS = {
+  primary: '#F5A623',
+  secondary: '#4ECDC4',
+  accent: '#1F3A93',
+  background: '#FFF8F0',
+  white: '#FFFFFF',
+  text: '#2C3E50',
+  textLight: '#7F8C8D',
+  border: '#E8E8E8',
+  success: '#27AE60',
+  danger: '#E74C3C',
+};
+
 const ForgotPasswordScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [isFormValid, setIsFormValid] = useState(false);
@@ -20,13 +34,10 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
   const handleEmailChange = (text) => {
     setEmail(text);
-    // EmailInput component has internal validation, 
-    // but we need to know if it's valid for the form
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     setIsFormValid(emailRegex.test(text));
   };
 
-  // פונקציה מעודכנת עם קריאה למונגו
   const handleResetPassword = async () => {
     if (!isFormValid) {
       Alert.alert('Error', 'Please enter a valid email address');
@@ -52,14 +63,14 @@ const ForgotPasswordScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#d3d3d3' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: COOKSY_COLORS.background }}>
       <View style={styles.container}>
         <View style={styles.header}>
-          <Image
-            alt="App Logo"
-            resizeMode="contain"
-            style={styles.headerImg}
-            source={{ uri: 'https://haraayonot.com/wp-content/uploads/2016/08/Logo.png' }} />
+          <View style={styles.logoContainer}>
+            <View style={styles.logoBackground}>
+              <Text style={styles.logoText}>🔐</Text>
+            </View>
+          </View>
 
           <Text style={styles.title}>
             Reset Password
@@ -79,7 +90,8 @@ const ForgotPasswordScreen = ({ navigation }) => {
               <EmailInput
                 value={email}
                 onChangeText={handleEmailChange}
-                placeholder="example@example.com"
+                placeholder="example@cooksy.com"
+                style={styles.emailInput}
               />
             </View>
 
@@ -93,7 +105,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
                 ]}
               >
                 {isLoading ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color={COOKSY_COLORS.white} />
                 ) : (
                   <Text style={styles.btnText}>Reset Password</Text>
                 )}
@@ -109,8 +121,14 @@ const ForgotPasswordScreen = ({ navigation }) => {
           </View>
         ) : (
           <View style={styles.successContainer}>
+            <View style={styles.successIcon}>
+              <Text style={styles.successEmoji}>✅</Text>
+            </View>
             <Text style={styles.successMessage}>
               We've sent an email to {email} with instructions to reset your password.
+            </Text>
+            <Text style={styles.successSubtext}>
+              Check your inbox and follow the link to create a new password.
             </Text>
             <View style={styles.formAction}>
               <TouchableOpacity
@@ -135,30 +153,48 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     flexBasis: 0,
     padding: 24,
+    backgroundColor: COOKSY_COLORS.background,
   },
   title: {
     fontSize: 31,
     fontWeight: '700',
-    color: '#1D2A32',
+    color: COOKSY_COLORS.accent,
     marginBottom: 6,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#929292',
+    color: COOKSY_COLORS.textLight,
     textAlign: 'center',
     paddingHorizontal: 20,
+    lineHeight: 22,
   },
   header: {
     alignItems: 'center',
     justifyContent: 'center',
     marginVertical: 36,
   },
-  headerImg: {
-    width: 80,
-    height: 80,
-    alignSelf: 'center',
+  logoContainer: {
     marginBottom: 36,
+  },
+  logoBackground: {
+    width: 100,
+    height: 100,
+    backgroundColor: COOKSY_COLORS.white,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    borderWidth: 3,
+    borderColor: COOKSY_COLORS.secondary,
+  },
+  logoText: {
+    fontSize: 40,
   },
   form: {
     flexGrow: 1,
@@ -172,7 +208,7 @@ const styles = StyleSheet.create({
   formLink: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#075eec',
+    color: COOKSY_COLORS.secondary,
     textAlign: 'center',
   },
   input: {
@@ -181,41 +217,79 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#222',
+    color: COOKSY_COLORS.text,
     marginBottom: 8,
+  },
+  emailInput: {
+    backgroundColor: COOKSY_COLORS.white,
+    borderColor: COOKSY_COLORS.border,
+    borderWidth: 2,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: COOKSY_COLORS.text,
   },
   btn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 30,
-    paddingVertical: 10,
+    borderRadius: 25,
+    paddingVertical: 12,
     paddingHorizontal: 20,
-    borderWidth: 1,
-    backgroundColor: '#075eec',
-    borderColor: '#075eec',
+    borderWidth: 0,
+    backgroundColor: COOKSY_COLORS.primary,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
   btnDisabled: {
-    backgroundColor: '#a9c0e9',
-    borderColor: '#a9c0e9',
+    backgroundColor: COOKSY_COLORS.textLight,
+    elevation: 0,
+    shadowOpacity: 0,
   },
   btnText: {
     fontSize: 18,
     lineHeight: 26,
     fontWeight: '600',
-    color: '#fff',
+    color: COOKSY_COLORS.white,
   },
   successContainer: {
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: COOKSY_COLORS.white,
+    borderRadius: 20,
+    padding: 32,
+    margin: 16,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  successIcon: {
+    marginBottom: 24,
+  },
+  successEmoji: {
+    fontSize: 60,
   },
   successMessage: {
     fontSize: 16,
     textAlign: 'center',
+    marginBottom: 16,
+    color: COOKSY_COLORS.text,
+    fontWeight: '600',
+    lineHeight: 22,
+  },
+  successSubtext: {
+    fontSize: 14,
+    textAlign: 'center',
     marginBottom: 30,
-    color: '#075eec',
-    fontWeight: '500',
+    color: COOKSY_COLORS.textLight,
+    lineHeight: 20,
   },
 });
 

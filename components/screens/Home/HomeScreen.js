@@ -21,9 +21,24 @@ import PostComponent from '../../common/PostComponent';
 import CreatePostComponent from '../../common/CreatePostComponent';
 import SharePostComponent from '../../common/SharePostComponent';
 
+// צבעי Cooksy
+const COOKSY_COLORS = {
+  primary: '#F5A623',
+  secondary: '#4ECDC4',
+  accent: '#1F3A93',
+  background: '#FFF8F0',
+  white: '#FFFFFF',
+  text: '#2C3E50',
+  textLight: '#7F8C8D',
+  border: '#E8E8E8',
+  success: '#27AE60',
+  danger: '#E74C3C',
+  warning: '#F39C12',
+  info: '#3498DB'
+};
 
 const HomeScreen = ({ currentUser }) => {
-  const { logout } = useAuth(); // הוסף את זה
+  const { logout } = useAuth();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -37,15 +52,13 @@ const HomeScreen = ({ currentUser }) => {
       console.log('📥 Loading posts...');
       const result = await recipeService.getAllRecipes();
       
-      console.log('📥 Load result:', result); // Debug
+      console.log('📥 Load result:', result);
       
       if (result.success) {
         console.log('✅ Posts loaded successfully:', result.data?.length || 0);
         
-        // ודא שהנתונים הם array
         const postsArray = Array.isArray(result.data) ? result.data : [];
         
-        // ודא שהנתונים במבנה הנכון
         const formattedPosts = postsArray.map(post => ({
           ...post,
           _id: post._id || post.id,
@@ -56,7 +69,6 @@ const HomeScreen = ({ currentUser }) => {
           createdAt: post.createdAt || post.created_at || new Date().toISOString(),
         }));
         
-        // מיין לפי תאריך יצירה (החדש ביותר ראשון)
         const sortedPosts = formattedPosts.sort((a, b) => 
           new Date(b.createdAt) - new Date(a.createdAt)
         );
@@ -76,18 +88,15 @@ const HomeScreen = ({ currentUser }) => {
     }
   }, []);
 
-  // טעינה ראשונית
   useEffect(() => {
     loadPosts();
   }, [loadPosts]);
 
-  // רענון
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     loadPosts();
   }, [loadPosts]);
 
-  // התנתקות
   const handleLogout = useCallback(() => {
     Alert.alert(
       'Logout',
@@ -109,14 +118,11 @@ const HomeScreen = ({ currentUser }) => {
     );
   }, [logout]);
 
-  // טיפול ביצירת פוסט חדש
   const handlePostCreated = useCallback((newPost) => {
     console.log('✅ New post created:', newPost);
-    // הוסף את הפוסט החדש לראש הרשימה
     setPosts(prevPosts => [newPost, ...prevPosts]);
   }, []);
 
-  // עדכון פוסט
   const handlePostUpdate = useCallback((updatedPost) => {
     console.log('📝 Post updated:', updatedPost);
     setPosts(prevPosts => 
@@ -126,7 +132,6 @@ const HomeScreen = ({ currentUser }) => {
     );
   }, []);
 
-  // מחיקת פוסט
   const handlePostDelete = useCallback(async (postId) => {
     try {
       console.log('🗑️ Deleting post:', postId);
@@ -144,14 +149,12 @@ const HomeScreen = ({ currentUser }) => {
     }
   }, []);
 
-  // שיתוף פוסט
   const handleShare = useCallback((post) => {
     console.log('📤 Sharing post:', post.title);
     setSharePost(post);
     setShowShareModal(true);
   }, []);
 
-  // שיתוף מערכת
   const handleSystemShare = useCallback(async (post) => {
     try {
       const shareContent = {
@@ -165,24 +168,19 @@ const HomeScreen = ({ currentUser }) => {
     }
   }, []);
 
-  // סגירת מודל שיתוף
   const handleShareModalClose = useCallback(() => {
     setShowShareModal(false);
     setSharePost(null);
   }, []);
 
-  // אישור שיתוף
   const handleShareSubmit = useCallback((shareData) => {
     console.log('📤 Share submitted:', shareData);
-    // כאן תוכל להוסיף לוגיקה לשליחת השיתוף לשרת
     Alert.alert('Success', 'Recipe shared successfully!');
     handleShareModalClose();
   }, [handleShareModalClose]);
 
-  // רכיב יצירת פוסט מוקטן
   const renderCreatePost = useCallback(() => (
     <View style={styles.createPostContainer}>
-      {/* Header קטן ליצירת פוסט */}
       <View style={styles.createPostHeader}>
         <Image 
           source={{ uri: currentUser?.avatar || 'https://randomuser.me/api/portraits/men/32.jpg' }}
@@ -193,7 +191,7 @@ const HomeScreen = ({ currentUser }) => {
           onPress={() => setShowCreateModal(true)}
         >
           <Text style={styles.createPostPlaceholder}>
-            Share a new recipe...
+            What delicious recipe will you share today?
           </Text>
         </TouchableOpacity>
       </View>
@@ -203,7 +201,7 @@ const HomeScreen = ({ currentUser }) => {
           style={styles.createPostButton}
           onPress={() => setShowCreateModal(true)}
         >
-          <Ionicons name="restaurant-outline" size={20} color="#FF6B35" />
+          <Ionicons name="restaurant-outline" size={20} color={COOKSY_COLORS.primary} />
           <Text style={styles.createPostButtonText}>Recipe</Text>
         </TouchableOpacity>
         
@@ -211,16 +209,14 @@ const HomeScreen = ({ currentUser }) => {
           style={styles.createPostButton}
           onPress={() => setShowCreateModal(true)}
         >
-          <Ionicons name="camera-outline" size={20} color="#4CAF50" />
+          <Ionicons name="camera-outline" size={20} color={COOKSY_COLORS.secondary} />
           <Text style={styles.createPostButtonText}>Photo</Text>
         </TouchableOpacity>
       </View>
     </View>
   ), [currentUser]);
 
-  // רכיב פוסט בודד
   const renderPost = useCallback(({ item, index }) => {
-    // ✅ Debug - ודא שיש currentUser
     console.log('🔍 Rendering post with currentUser:', currentUser?.id);
     
     return (
@@ -237,53 +233,58 @@ const HomeScreen = ({ currentUser }) => {
     );
   }, [currentUser, handlePostUpdate, handlePostDelete, handleSystemShare, handleShare]);
 
-  // רכיב ריק
   const renderEmptyComponent = useCallback(() => (
     !loading && (
       <View style={styles.emptyContainer}>
+        <View style={styles.emptyIcon}>
+          <Ionicons name="restaurant-outline" size={80} color={COOKSY_COLORS.textLight} />
+        </View>
         <Text style={styles.emptyTitle}>No Recipes Yet!</Text>
         <Text style={styles.emptySubtitle}>
-          Be the first to share your amazing recipe with the community
+          Be the first to share your amazing recipe with the Cooksy community
         </Text>
+        <TouchableOpacity 
+          style={styles.emptyButton}
+          onPress={() => setShowCreateModal(true)}
+        >
+          <Text style={styles.emptyButtonText}>Share Recipe</Text>
+        </TouchableOpacity>
       </View>
     )
   ), [loading]);
 
-  // רכיב טעינה
   const renderLoader = useCallback(() => (
     loading && (
       <View style={styles.loaderContainer}>
-        <ActivityIndicator size="large" color="#0866ff" />
+        <ActivityIndicator size="large" color={COOKSY_COLORS.primary} />
         <Text style={styles.loaderText}>Loading delicious recipes...</Text>
       </View>
     )
   ), [loading]);
 
-  // מפריד בין פוסטים
   const ItemSeparatorComponent = useCallback(() => (
     <View style={styles.separator} />
   ), []);
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      <StatusBar barStyle="dark-content" backgroundColor={COOKSY_COLORS.white} />
       
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Recipe Share</Text>
+        <Text style={styles.headerTitle}>Cooksy</Text>
         <View style={styles.headerButtons}>
           <Text style={styles.postsCount}>
             {posts.length} recipes
           </Text>
           <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="search-outline" size={24} color="#333" />
+            <Ionicons name="search-outline" size={24} color={COOKSY_COLORS.accent} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="notifications-outline" size={24} color="#333" />
+            <Ionicons name="notifications-outline" size={24} color={COOKSY_COLORS.accent} />
           </TouchableOpacity>
-          {/* כפתור התנתקות */}
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
+            <Ionicons name="log-out-outline" size={24} color={COOKSY_COLORS.danger} />
           </TouchableOpacity>
         </View>
       </View>
@@ -299,8 +300,8 @@ const HomeScreen = ({ currentUser }) => {
           <RefreshControl 
             refreshing={refreshing} 
             onRefresh={onRefresh}
-            colors={['#0866ff']}
-            tintColor="#0866ff"
+            colors={[COOKSY_COLORS.primary]}
+            tintColor={COOKSY_COLORS.primary}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -309,7 +310,7 @@ const HomeScreen = ({ currentUser }) => {
         windowSize={10}
         initialNumToRender={3}
         getItemLayout={(data, index) => ({
-          length: 400, // גובה משוער של פוסט
+          length: 400,
           offset: 400 * index,
           index,
         })}
@@ -328,7 +329,7 @@ const HomeScreen = ({ currentUser }) => {
                 onPress={() => setShowCreateModal(false)}
                 style={styles.modalCloseButton}
               >
-                <Ionicons name="close" size={24} color="#333" />
+                <Ionicons name="close" size={24} color={COOKSY_COLORS.accent} />
               </TouchableOpacity>
               <Text style={styles.modalTitle}>Share Recipe</Text>
               <View style={styles.modalPlaceholder} />
@@ -337,7 +338,7 @@ const HomeScreen = ({ currentUser }) => {
             <CreatePostComponent
               onPostCreated={(newPost) => {
                 handlePostCreated(newPost);
-                setShowCreateModal(false); // 🔥 סגור את המודל אחרי יצירה
+                setShowCreateModal(false);
               }}
               currentUser={currentUser}
             />
@@ -356,27 +357,35 @@ const HomeScreen = ({ currentUser }) => {
         />
       )}
 
-      {/* אינדיקטור טעינה */}
       {renderLoader()}
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COOKSY_COLORS.background,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#fff',
+    backgroundColor: COOKSY_COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: COOKSY_COLORS.border,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#FF6B35',
+    color: COOKSY_COLORS.accent,
   },
   headerButtons: {
     flexDirection: 'row',
@@ -384,33 +393,31 @@ const styles = StyleSheet.create({
   },
   postsCount: {
     fontSize: 12,
-    color: '#666',
+    color: COOKSY_COLORS.textLight,
     marginRight: 12,
+    fontWeight: '500',
   },
   headerButton: {
     padding: 8,
     marginLeft: 8,
+    backgroundColor: COOKSY_COLORS.background,
+    borderRadius: 20,
   },
   logoutButton: {
     padding: 8,
     marginLeft: 8,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#f0f2f5',
+    backgroundColor: COOKSY_COLORS.background,
+    borderRadius: 20,
   },
   createPostContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: COOKSY_COLORS.white,
     marginBottom: 8,
     padding: 16,
     elevation: 2,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.22,
-    shadowRadius: 2.22,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   createPostHeader: {
     flexDirection: 'row',
@@ -422,41 +429,49 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     marginRight: 12,
+    borderWidth: 2,
+    borderColor: COOKSY_COLORS.primary,
   },
   createPostInput: {
     flex: 1,
-    backgroundColor: '#f0f2f5',
+    backgroundColor: COOKSY_COLORS.background,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: COOKSY_COLORS.border,
   },
   createPostPlaceholder: {
     fontSize: 16,
-    color: '#666',
+    color: COOKSY_COLORS.textLight,
   },
   createPostActions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: COOKSY_COLORS.border,
   },
   createPostButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 16,
+    backgroundColor: COOKSY_COLORS.background,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: COOKSY_COLORS.border,
   },
   createPostButtonText: {
     fontSize: 14,
-    color: '#666',
+    color: COOKSY_COLORS.text,
     marginLeft: 6,
     fontWeight: '500',
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: '#fff',
-    paddingTop: 50, // 🔥 הוסף padding במקום SafeAreaView
+    backgroundColor: COOKSY_COLORS.white,
+    paddingTop: 50,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -465,34 +480,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: COOKSY_COLORS.border,
+    backgroundColor: COOKSY_COLORS.white,
   },
   modalCloseButton: {
-    padding: 4,
+    padding: 8,
+    backgroundColor: COOKSY_COLORS.background,
+    borderRadius: 20,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: COOKSY_COLORS.text,
   },
   modalPlaceholder: {
     width: 32,
   },
   postContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: COOKSY_COLORS.white,
     marginHorizontal: 0,
     elevation: 1,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.18,
-    shadowRadius: 1.0,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
   },
   separator: {
     height: 8,
-    backgroundColor: '#f0f2f5',
+    backgroundColor: COOKSY_COLORS.background,
   },
   emptyContainer: {
     flex: 1,
@@ -501,18 +516,34 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
     paddingHorizontal: 40,
   },
+  emptyIcon: {
+    marginBottom: 20,
+    opacity: 0.5,
+  },
   emptyTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: COOKSY_COLORS.text,
     marginBottom: 12,
     textAlign: 'center',
   },
   emptySubtitle: {
     fontSize: 16,
-    color: '#666',
+    color: COOKSY_COLORS.textLight,
     textAlign: 'center',
     lineHeight: 24,
+    marginBottom: 24,
+  },
+  emptyButton: {
+    backgroundColor: COOKSY_COLORS.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 25,
+  },
+  emptyButtonText: {
+    color: COOKSY_COLORS.white,
+    fontSize: 16,
+    fontWeight: '600',
   },
   loaderContainer: {
     position: 'absolute',
@@ -528,7 +559,7 @@ const styles = StyleSheet.create({
   loaderText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#666',
+    color: COOKSY_COLORS.textLight,
     textAlign: 'center',
   },
 });

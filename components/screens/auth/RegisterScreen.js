@@ -15,6 +15,20 @@ import { authService } from '../../../services/authService';
 import PasswordInput from '../../common/PasswordInput';
 import EmailInput from '../../common/EmailInput';
 
+// צבעי Cooksy
+const COOKSY_COLORS = {
+  primary: '#F5A623',
+  secondary: '#4ECDC4',
+  accent: '#1F3A93',
+  background: '#FFF8F0',
+  white: '#FFFFFF',
+  text: '#2C3E50',
+  textLight: '#7F8C8D',
+  border: '#E8E8E8',
+  success: '#27AE60',
+  danger: '#E74C3C',
+};
+
 const RegisterScreen = ({ navigation }) => {
   const [form, setForm] = useState({
     fullName: '',
@@ -99,7 +113,6 @@ const RegisterScreen = ({ navigation }) => {
     handleInputChange('confirmPassword', text);
   };
 
-  // פונקציה מעודכנת עם קריאה למונגו
   const handleRegister = async () => {
     if (!validateForm()) {
       Alert.alert('Error', 'Please fill in all fields correctly.');
@@ -118,9 +131,9 @@ const RegisterScreen = ({ navigation }) => {
 
       if (result.success) {
         Alert.alert(
-          'Success', 
+          'Welcome to Cooksy! 🍳', 
           'Registration completed successfully!', 
-          [{ text: 'OK', onPress: () => navigation.navigate('Home') }]
+          [{ text: 'Start Cooking!', onPress: () => navigation.navigate('Home') }]
         );
       } else {
         Alert.alert('Registration Failed', result.message);
@@ -133,18 +146,18 @@ const RegisterScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#d3d3d3' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: COOKSY_COLORS.background }}>
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <View style={styles.container}>
           <View style={styles.header}>
-            <Image
-              alt="App Logo"
-              resizeMode="contain"
-              style={styles.headerImg}
-              source={{ uri: 'https://haraayonot.com/wp-content/uploads/2016/08/Logo.png' }}
-            />
-            <Text style={styles.title}>Create an Account</Text>
-            <Text style={styles.subtitle}>Sign up to get started with MyApp</Text>
+            <View style={styles.logoContainer}>
+              <View style={styles.logoBackground}>
+                <Text style={styles.logoText}>👨‍🍳</Text>
+              </View>
+            </View>
+            
+            <Text style={styles.title}>Join Cooksy</Text>
+            <Text style={styles.subtitle}>Create your account and start sharing delicious recipes</Text>
           </View>
 
           <View style={styles.form}>
@@ -153,8 +166,8 @@ const RegisterScreen = ({ navigation }) => {
               <TextInput
                 autoCorrect={false}
                 onChangeText={(text) => handleInputChange('fullName', text)}
-                placeholder="John Doe"
-                placeholderTextColor="#6b7280"
+                placeholder="Chef's Name"
+                placeholderTextColor={COOKSY_COLORS.textLight}
                 style={[
                   styles.inputControl,
                   errors.fullName ? styles.inputError : null
@@ -169,7 +182,8 @@ const RegisterScreen = ({ navigation }) => {
               <EmailInput
                 value={form.email}
                 onChangeText={handleEmailChange}
-                placeholder="example@example.com"
+                placeholder="chef@cooksy.com"
+                style={styles.emailInput}
               />
               {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
             </View>
@@ -179,7 +193,8 @@ const RegisterScreen = ({ navigation }) => {
               <PasswordInput
                 value={form.password}
                 onChangeText={handlePasswordChange}
-                placeholder="Create a password"
+                placeholder="Create a strong password"
+                style={styles.passwordInput}
               />
               {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
             </View>
@@ -191,6 +206,7 @@ const RegisterScreen = ({ navigation }) => {
                 onChangeText={handleConfirmPasswordChange}
                 placeholder="Confirm your password"
                 isConfirmation={true}
+                style={styles.passwordInput}
               />
               {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
             </View>
@@ -205,18 +221,29 @@ const RegisterScreen = ({ navigation }) => {
                 ]}
               >
                 {isLoading ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color={COOKSY_COLORS.white} />
                 ) : (
-                  <Text style={styles.btnText}>Create Account</Text>
+                  <Text style={styles.btnText}>Join the Community</Text>
                 )}
               </TouchableOpacity>
+            </View>
+
+            <View style={styles.termsContainer}>
+              <Text style={styles.termsText}>
+                By creating an account, you agree to our{' '}
+                <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
+                <Text style={styles.termsLink}>Privacy Policy</Text>
+              </Text>
             </View>
           </View>
         </View>
 
         <TouchableOpacity onPress={() => navigation.navigate('Login')}>
           <Text style={styles.formFooter}>
-            Already have an account? <Text style={{ textDecorationLine: 'underline' }}>Sign in</Text>
+            Already have an account?{' '}
+            <Text style={{ textDecorationLine: 'underline', color: COOKSY_COLORS.secondary }}>
+              Sign in to Cooksy
+            </Text>
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -225,35 +252,156 @@ const RegisterScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 24 },
-  title: { fontSize: 31, fontWeight: '700', color: '#1D2A32', marginBottom: 6 },
-  subtitle: { fontSize: 15, fontWeight: '500', color: '#929292', textAlign: 'center', paddingHorizontal: 20 },
-  header: { alignItems: 'center', justifyContent: 'center', marginVertical: 24 },
-  headerImg: { width: 80, height: 80, alignSelf: 'center', marginBottom: 24 },
-  form: { flexGrow: 1 },
-  input: { marginBottom: 16 },
-  inputLabel: { fontSize: 17, fontWeight: '600', color: '#222', marginBottom: 8 },
-  inputControl: {
-    height: 50, backgroundColor: '#fff', paddingHorizontal: 16,
-    borderRadius: 12, fontSize: 15, fontWeight: '500',
-    color: '#222', borderWidth: 1, borderColor: '#C9D3DB',
+  container: {
+    flexGrow: 1,
+    padding: 24,
+    backgroundColor: COOKSY_COLORS.background,
   },
-  inputError: { borderColor: '#e74c3c' },
-  errorText: { color: '#e74c3c', fontSize: 14, marginTop: 5 },
-  formAction: { marginTop: 20, marginBottom: 16 },
+  title: {
+    fontSize: 31,
+    fontWeight: '700',
+    color: COOKSY_COLORS.accent,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: COOKSY_COLORS.textLight,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    lineHeight: 22,
+  },
+  header: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 24,
+  },
+  logoContainer: {
+    marginBottom: 24,
+  },
+  logoBackground: {
+    width: 100,
+    height: 100,
+    backgroundColor: COOKSY_COLORS.white,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    borderWidth: 3,
+    borderColor: COOKSY_COLORS.primary,
+  },
+  logoText: {
+    fontSize: 40,
+  },
+  form: {
+    flexGrow: 1,
+  },
+  input: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: COOKSY_COLORS.text,
+    marginBottom: 8,
+  },
+  inputControl: {
+    height: 50,
+    backgroundColor: COOKSY_COLORS.white,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    fontSize: 15,
+    fontWeight: '500',
+    color: COOKSY_COLORS.text,
+    borderWidth: 2,
+    borderColor: COOKSY_COLORS.border,
+  },
+  emailInput: {
+    backgroundColor: COOKSY_COLORS.white,
+    borderColor: COOKSY_COLORS.border,
+    borderWidth: 2,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: COOKSY_COLORS.text,
+  },
+  passwordInput: {
+    backgroundColor: COOKSY_COLORS.white,
+    borderColor: COOKSY_COLORS.border,
+    borderWidth: 2,
+    borderRadius: 12,
+  },
+  inputError: {
+    borderColor: COOKSY_COLORS.danger,
+  },
+  errorText: {
+    color: COOKSY_COLORS.danger,
+    fontSize: 14,
+    marginTop: 5,
+    fontWeight: '500',
+  },
+  formAction: {
+    marginTop: 20,
+    marginBottom: 16,
+  },
   btn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    borderRadius: 30, paddingVertical: 10, paddingHorizontal: 20,
-    borderWidth: 1, backgroundColor: '#075eec', borderColor: '#075eec',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 25,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderWidth: 0,
+    backgroundColor: COOKSY_COLORS.primary,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
   btnDisabled: {
-    backgroundColor: '#a9c0e9',
-    borderColor: '#a9c0e9',
+    backgroundColor: COOKSY_COLORS.textLight,
+    elevation: 0,
+    shadowOpacity: 0,
   },
-  btnText: { fontSize: 18, lineHeight: 26, fontWeight: '600', color: '#fff' },
+  btnText: {
+    fontSize: 18,
+    lineHeight: 26,
+    fontWeight: '600',
+    color: COOKSY_COLORS.white,
+  },
+  termsContainer: {
+    marginTop: 16,
+    paddingHorizontal: 8,
+  },
+  termsText: {
+    fontSize: 13,
+    color: COOKSY_COLORS.textLight,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  termsLink: {
+    color: COOKSY_COLORS.secondary,
+    fontWeight: '600',
+  },
   formFooter: {
-    paddingVertical: 24, fontSize: 15, fontWeight: '600',
-    color: '#222', textAlign: 'center', letterSpacing: 0.15,
+    paddingVertical: 24,
+    fontSize: 15,
+    fontWeight: '600',
+    color: COOKSY_COLORS.text,
+    textAlign: 'center',
+    letterSpacing: 0.15,
+    backgroundColor: COOKSY_COLORS.white,
+    marginHorizontal: -24,
+    paddingHorizontal: 24,
+    borderTopWidth: 1,
+    borderTopColor: COOKSY_COLORS.border,
   },
 });
 

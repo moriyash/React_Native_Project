@@ -16,6 +16,20 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { recipeService } from '../../services/recipeService';
 
+// צבעי Cooksy
+const COOKSY_COLORS = {
+  primary: '#F5A623',
+  secondary: '#4ECDC4',
+  accent: '#1F3A93',
+  background: '#FFF8F0',
+  white: '#FFFFFF',
+  text: '#2C3E50',
+  textLight: '#7F8C8D',
+  border: '#E8E8E8',
+  success: '#27AE60',
+  danger: '#E74C3C',
+};
+
 const RECIPE_CATEGORIES = [
   'Asian', 'Italian', 'Mexican', 'Indian', 'Mediterranean', 
   'American', 'French', 'Chinese', 'Japanese', 'Thai', 
@@ -28,7 +42,6 @@ const MEAT_TYPES = [
 ];
 
 const CreatePostComponent = ({ onPostCreated, currentUser }) => {
-  // ✅ State פשוט עם ערכי ברירת מחדל
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [ingredients, setIngredients] = useState('');
@@ -121,7 +134,7 @@ const CreatePostComponent = ({ onPostCreated, currentUser }) => {
     console.log('🔍 Submitting form...');
     
     if (!validateForm()) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      Alert.alert('Missing Information', 'Please fill in all required fields to share your delicious recipe!');
       return;
     }
 
@@ -150,7 +163,7 @@ const CreatePostComponent = ({ onPostCreated, currentUser }) => {
       const result = await recipeService.createRecipe(recipeData);
 
       if (result && result.success) {
-        Alert.alert('Success', 'Recipe posted successfully!');
+        Alert.alert('Recipe Shared! 🍳', 'Your delicious recipe has been shared with the Cooksy community!');
         
         // Reset form
         setTitle('');
@@ -169,11 +182,11 @@ const CreatePostComponent = ({ onPostCreated, currentUser }) => {
           onPostCreated(result.data);
         }
       } else {
-        Alert.alert('Error', result ? result.message : 'Failed to create recipe');
+        Alert.alert('Upload Failed', result ? result.message : 'Failed to share recipe. Please try again.');
       }
     } catch (error) {
       console.error('Submit error:', error);
-      Alert.alert('Error', 'Failed to post recipe');
+      Alert.alert('Connection Error', 'Unable to share recipe. Please check your connection and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -221,7 +234,8 @@ const CreatePostComponent = ({ onPostCreated, currentUser }) => {
               setTitle(text);
               clearError('title');
             }}
-            placeholder="Enter recipe title..."
+            placeholder="What's cooking? Give your recipe a delicious name..."
+            placeholderTextColor={COOKSY_COLORS.textLight}
           />
           {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
         </View>
@@ -236,7 +250,8 @@ const CreatePostComponent = ({ onPostCreated, currentUser }) => {
               setDescription(text);
               clearError('description');
             }}
-            placeholder="Describe your recipe..."
+            placeholder="Tell us about your recipe... What makes it special?"
+            placeholderTextColor={COOKSY_COLORS.textLight}
             multiline
             numberOfLines={3}
           />
@@ -252,9 +267,9 @@ const CreatePostComponent = ({ onPostCreated, currentUser }) => {
               onPress={() => setShowCategoryModal(true)}
             >
               <Text style={category ? styles.selectorText : styles.placeholderText}>
-                {category || 'Select category'}
+                {category || 'Select cuisine'}
               </Text>
-              <Ionicons name="chevron-down" size={20} color="#666" />
+              <Ionicons name="chevron-down" size={20} color={COOKSY_COLORS.accent} />
             </TouchableOpacity>
             {errors.category && <Text style={styles.errorText}>{errors.category}</Text>}
           </View>
@@ -268,7 +283,7 @@ const CreatePostComponent = ({ onPostCreated, currentUser }) => {
               <Text style={meatType ? styles.selectorText : styles.placeholderText}>
                 {meatType || 'Select type'}
               </Text>
-              <Ionicons name="chevron-down" size={20} color="#666" />
+              <Ionicons name="chevron-down" size={20} color={COOKSY_COLORS.accent} />
             </TouchableOpacity>
             {errors.meatType && <Text style={styles.errorText}>{errors.meatType}</Text>}
           </View>
@@ -287,6 +302,7 @@ const CreatePostComponent = ({ onPostCreated, currentUser }) => {
                   clearError('prepTime');
                 }}
                 placeholder="0"
+                placeholderTextColor={COOKSY_COLORS.textLight}
                 keyboardType="numeric"
                 maxLength={2}
               />
@@ -298,7 +314,8 @@ const CreatePostComponent = ({ onPostCreated, currentUser }) => {
                   setPrepTimeMinutes(text);
                   clearError('prepTime');
                 }}
-                placeholder="0"
+                placeholder="30"
+                placeholderTextColor={COOKSY_COLORS.textLight}
                 keyboardType="numeric"
                 maxLength={2}
               />
@@ -317,6 +334,7 @@ const CreatePostComponent = ({ onPostCreated, currentUser }) => {
                 clearError('servings');
               }}
               placeholder="4"
+              placeholderTextColor={COOKSY_COLORS.textLight}
               keyboardType="numeric"
               maxLength={2}
             />
@@ -334,7 +352,8 @@ const CreatePostComponent = ({ onPostCreated, currentUser }) => {
               setIngredients(text);
               clearError('ingredients');
             }}
-            placeholder="List all ingredients..."
+            placeholder="List all ingredients and quantities..."
+            placeholderTextColor={COOKSY_COLORS.textLight}
             multiline
             numberOfLines={4}
           />
@@ -351,7 +370,8 @@ const CreatePostComponent = ({ onPostCreated, currentUser }) => {
               setInstructions(text);
               clearError('instructions');
             }}
-            placeholder="Step by step cooking instructions..."
+            placeholder="Share your cooking secrets... Step by step instructions"
+            placeholderTextColor={COOKSY_COLORS.textLight}
             multiline
             numberOfLines={5}
           />
@@ -360,7 +380,7 @@ const CreatePostComponent = ({ onPostCreated, currentUser }) => {
 
         {/* Image Picker */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Recipe Image</Text>
+          <Text style={styles.label}>Recipe Photo</Text>
           <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
             {image ? (
               <View>
@@ -369,13 +389,14 @@ const CreatePostComponent = ({ onPostCreated, currentUser }) => {
                   style={styles.removeImageButton}
                   onPress={() => setImage(null)}
                 >
-                  <Ionicons name="close-circle" size={24} color="#FF3B30" />
+                  <Ionicons name="close-circle" size={24} color={COOKSY_COLORS.danger} />
                 </TouchableOpacity>
               </View>
             ) : (
               <View style={styles.imagePickerPlaceholder}>
-                <Ionicons name="camera-outline" size={40} color="#666" />
-                <Text style={styles.imagePickerText}>Add Photo</Text>
+                <Ionicons name="camera-outline" size={40} color={COOKSY_COLORS.secondary} />
+                <Text style={styles.imagePickerText}>Add a mouth-watering photo</Text>
+                <Text style={styles.imagePickerSubtext}>Make your recipe irresistible!</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -388,9 +409,12 @@ const CreatePostComponent = ({ onPostCreated, currentUser }) => {
           disabled={isLoading}
         >
           {isLoading ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color={COOKSY_COLORS.white} />
           ) : (
-            <Text style={styles.submitButtonText}>Post Recipe</Text>
+            <>
+              <Ionicons name="restaurant" size={20} color={COOKSY_COLORS.white} style={{ marginRight: 8 }} />
+              <Text style={styles.submitButtonText}>Share Recipe</Text>
+            </>
           )}
         </TouchableOpacity>
       </View>
@@ -405,9 +429,9 @@ const CreatePostComponent = ({ onPostCreated, currentUser }) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Category</Text>
+              <Text style={styles.modalTitle}>Select Cuisine</Text>
               <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
-                <Ionicons name="close" size={24} color="#000" />
+                <Ionicons name="close" size={24} color={COOKSY_COLORS.accent} />
               </TouchableOpacity>
             </View>
             {renderModalList(RECIPE_CATEGORIES, (selectedCategory) => {
@@ -431,7 +455,7 @@ const CreatePostComponent = ({ onPostCreated, currentUser }) => {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Type</Text>
               <TouchableOpacity onPress={() => setShowMeatTypeModal(false)}>
-                <Ionicons name="close" size={24} color="#000" />
+                <Ionicons name="close" size={24} color={COOKSY_COLORS.accent} />
               </TouchableOpacity>
             </View>
             {renderModalList(MEAT_TYPES, (selectedType) => {
@@ -449,133 +473,153 @@ const CreatePostComponent = ({ onPostCreated, currentUser }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: COOKSY_COLORS.background,
   },
   form: {
     padding: 16,
   },
   inputGroup: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   label: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: COOKSY_COLORS.text,
     marginBottom: 8,
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: COOKSY_COLORS.border,
+    borderRadius: 12,
     padding: 12,
     fontSize: 16,
-    backgroundColor: '#fff',
+    backgroundColor: COOKSY_COLORS.white,
+    color: COOKSY_COLORS.text,
   },
   textArea: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: COOKSY_COLORS.border,
+    borderRadius: 12,
     padding: 12,
     fontSize: 16,
-    backgroundColor: '#fff',
+    backgroundColor: COOKSY_COLORS.white,
     textAlignVertical: 'top',
     minHeight: 80,
+    color: COOKSY_COLORS.text,
   },
   inputError: {
-    borderColor: '#FF3B30',
+    borderColor: COOKSY_COLORS.danger,
   },
   errorText: {
-    color: '#FF3B30',
+    color: COOKSY_COLORS.danger,
     fontSize: 14,
     marginTop: 4,
+    fontWeight: '500',
   },
   rowContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   halfWidth: {
     width: '48%',
   },
   selector: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: COOKSY_COLORS.border,
+    borderRadius: 12,
     padding: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: COOKSY_COLORS.white,
   },
   selectorText: {
     fontSize: 16,
-    color: '#333',
+    color: COOKSY_COLORS.text,
   },
   placeholderText: {
     fontSize: 16,
-    color: '#999',
+    color: COOKSY_COLORS.textLight,
   },
   timeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   timeInput: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: COOKSY_COLORS.border,
+    borderRadius: 12,
     padding: 12,
     fontSize: 16,
-    backgroundColor: '#fff',
+    backgroundColor: COOKSY_COLORS.white,
     width: 50,
     textAlign: 'center',
+    color: COOKSY_COLORS.text,
   },
   timeLabel: {
     fontSize: 16,
-    color: '#666',
+    color: COOKSY_COLORS.text,
     marginHorizontal: 8,
+    fontWeight: '600',
   },
   imagePicker: {
     borderWidth: 2,
-    borderColor: '#ddd',
+    borderColor: COOKSY_COLORS.secondary,
     borderStyle: 'dashed',
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f9f9f9',
+    backgroundColor: COOKSY_COLORS.white,
   },
   imagePickerPlaceholder: {
     alignItems: 'center',
   },
   imagePickerText: {
     fontSize: 16,
-    color: '#666',
+    color: COOKSY_COLORS.text,
     marginTop: 8,
+    fontWeight: '600',
+  },
+  imagePickerSubtext: {
+    fontSize: 14,
+    color: COOKSY_COLORS.textLight,
+    marginTop: 4,
   },
   selectedImage: {
     width: 200,
     height: 150,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   removeImageButton: {
     position: 'absolute',
     top: -10,
     right: -10,
-    backgroundColor: '#fff',
+    backgroundColor: COOKSY_COLORS.white,
     borderRadius: 12,
   },
   submitButton: {
-    backgroundColor: '#0866ff',
-    borderRadius: 8,
+    backgroundColor: COOKSY_COLORS.primary,
+    borderRadius: 25,
     padding: 16,
     alignItems: 'center',
     marginTop: 20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
   submitButtonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: COOKSY_COLORS.textLight,
+    elevation: 0,
+    shadowOpacity: 0,
   },
   submitButtonText: {
-    color: '#fff',
+    color: COOKSY_COLORS.white,
     fontSize: 18,
     fontWeight: '600',
   },
@@ -585,7 +629,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: COOKSY_COLORS.white,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '70%',
@@ -596,26 +640,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
+    borderBottomColor: COOKSY_COLORS.border,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
+    color: COOKSY_COLORS.text,
   },
   modalItem: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: COOKSY_COLORS.border,
   },
   modalItemSelected: {
-    backgroundColor: '#e3f2fd',
+    backgroundColor: COOKSY_COLORS.background,
   },
   modalItemText: {
     fontSize: 16,
-    color: '#333',
+    color: COOKSY_COLORS.text,
   },
   modalItemTextSelected: {
-    color: '#0866ff',
+    color: COOKSY_COLORS.primary,
     fontWeight: '600',
   },
 });

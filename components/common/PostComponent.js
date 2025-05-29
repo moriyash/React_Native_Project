@@ -18,10 +18,23 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { recipeService } from '../../services/recipeService';
 
+// צבעי Cooksy
+const COOKSY_COLORS = {
+  primary: '#F5A623',
+  secondary: '#4ECDC4',
+  accent: '#1F3A93',
+  background: '#FFF8F0',
+  white: '#FFFFFF',
+  text: '#2C3E50',
+  textLight: '#7F8C8D',
+  border: '#E8E8E8',
+  success: '#27AE60',
+  danger: '#E74C3C',
+};
+
 const { width: screenWidth } = Dimensions.get('window');
 
 const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
-  // ✅ Safe checks - ודא שכל הנתונים קיימים
   const safePost = post || {};
   const safeCurrentUser = currentUser || {};
   
@@ -35,7 +48,6 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
   const [newComment, setNewComment] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
-  // Debug logs
   console.log('🔍 PostComponent props:', {
     postId: safePost._id || safePost.id,
     currentUserId: safeCurrentUser.id,
@@ -83,7 +95,6 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
   };
 
   const handleLike = async () => {
-    // ✅ Safe checks
     if (!safePost._id && !safePost.id) {
       console.error('❌ No post ID found');
       return;
@@ -98,7 +109,6 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
           setIsLiked(false);
           setLikesCount(prev => Math.max(0, prev - 1));
           
-          // עדכן את הפוסט בהום סקרין
           if (onUpdate) {
             onUpdate({
               ...safePost,
@@ -112,7 +122,6 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
           setIsLiked(true);
           setLikesCount(prev => prev + 1);
           
-          // עדכן את הפוסט בהום סקרין
           if (onUpdate) {
             onUpdate({
               ...safePost,
@@ -129,7 +138,7 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
 
   const handleAddComment = async () => {
     if (!newComment.trim()) {
-      Alert.alert('Error', 'Please enter a comment');
+      Alert.alert('Empty Comment', 'Please write something delicious!');
       return;
     }
 
@@ -150,7 +159,7 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
 
       if (result.success) {
         const newCommentObj = {
-          _id: Date.now().toString(), // Temporary ID
+          _id: Date.now().toString(),
           text: newComment.trim(),
           userId: safeCurrentUser.id,
           userName: safeCurrentUser.fullName || safeCurrentUser.name || 'Anonymous',
@@ -161,7 +170,6 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
         setComments(prev => [...prev, newCommentObj]);
         setNewComment('');
 
-        // עדכן את הפוסט בהום סקרין
         if (onUpdate) {
           onUpdate({
             ...safePost,
@@ -188,7 +196,6 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
       if (result.success) {
         setComments(prev => prev.filter(comment => comment._id !== commentId));
         
-        // עדכן את הפוסט בהום סקרין
         if (onUpdate) {
           onUpdate({
             ...safePost,
@@ -205,14 +212,13 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
   };
 
   const handleDelete = () => {
-    // ✅ Safe checks
     if (!safeCurrentUser.id || !safePost.userId) {
       Alert.alert('Error', 'Cannot determine ownership');
       return;
     }
 
     if (safePost.userId !== safeCurrentUser.id) {
-      Alert.alert('Error', 'You can only delete your own recipes');
+      Alert.alert('Permission Denied', 'You can only delete your own recipes');
       return;
     }
 
@@ -224,9 +230,9 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
 
     Alert.alert(
       'Delete Recipe',
-      'Are you sure you want to delete this recipe?',
+      'Are you sure you want to delete this delicious recipe?',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Keep It', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
@@ -263,7 +269,7 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
               onPress={() => handleDeleteComment(item._id)}
               style={styles.deleteCommentButton}
             >
-              <Ionicons name="trash-outline" size={16} color="#FF3B30" />
+              <Ionicons name="trash-outline" size={16} color={COOKSY_COLORS.danger} />
             </TouchableOpacity>
           )}
         </View>
@@ -287,7 +293,7 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
             style={styles.closeButton}
             onPress={() => setShowComments(false)}
           >
-            <Ionicons name="close" size={24} color="#000" />
+            <Ionicons name="close" size={24} color={COOKSY_COLORS.accent} />
           </TouchableOpacity>
           <Text style={styles.commentsTitle}>Comments ({comments.length})</Text>
           <View style={styles.placeholder} />
@@ -301,7 +307,7 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
           ListEmptyComponent={
             <View style={styles.emptyComments}>
               <Text style={styles.emptyCommentsText}>No comments yet</Text>
-              <Text style={styles.emptyCommentsSubtext}>Be the first to comment!</Text>
+              <Text style={styles.emptyCommentsSubtext}>Be the first to share your thoughts!</Text>
             </View>
           }
         />
@@ -315,7 +321,8 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
           />
           <TextInput
             style={styles.addCommentInput}
-            placeholder="Write a comment..."
+            placeholder="Share your thoughts on this recipe..."
+            placeholderTextColor={COOKSY_COLORS.textLight}
             value={newComment}
             onChangeText={setNewComment}
             multiline
@@ -330,9 +337,9 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
             disabled={!newComment.trim() || isSubmittingComment}
           >
             {isSubmittingComment ? (
-              <ActivityIndicator size="small" color="#0866ff" />
+              <ActivityIndicator size="small" color={COOKSY_COLORS.primary} />
             ) : (
-              <Ionicons name="send" size={20} color="#0866ff" />
+              <Ionicons name="send" size={20} color={COOKSY_COLORS.primary} />
             )}
           </TouchableOpacity>
         </View>
@@ -350,11 +357,11 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
       <View style={styles.fullRecipeContainer}>
         <View style={styles.fullRecipeHeader}>
           <TouchableOpacity
-            style={styles.closeButton}
+            style={styles.fullRecipeCloseButton}
             onPress={() => setShowFullRecipe(false)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="close" size={28} color="#000" />
+            <Ionicons name="close" size={28} color={COOKSY_COLORS.accent} />
           </TouchableOpacity>
           <Text style={styles.fullRecipeTitle} numberOfLines={2}>
             {safePost.title || 'Untitled Recipe'}
@@ -369,11 +376,11 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
           <View style={styles.fullRecipeContent}>
             <View style={styles.recipeMetaRow}>
               <View style={styles.recipeMeta}>
-                <Ionicons name="time-outline" size={16} color="#666" />
+                <Ionicons name="time-outline" size={16} color={COOKSY_COLORS.primary} />
                 <Text style={styles.recipeMetaText}>{formatTime(safePost.prepTime)}</Text>
               </View>
               <View style={styles.recipeMeta}>
-                <Ionicons name="people-outline" size={16} color="#666" />
+                <Ionicons name="people-outline" size={16} color={COOKSY_COLORS.secondary} />
                 <Text style={styles.recipeMetaText}>{safePost.servings || 0} servings</Text>
               </View>
               <View style={styles.recipeMeta}>
@@ -386,14 +393,14 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
             </Text>
 
             <View style={styles.recipeSection}>
-              <Text style={styles.sectionTitle}>Ingredients</Text>
+              <Text style={styles.sectionTitle}>🥘 Ingredients</Text>
               <Text style={styles.sectionContent}>
                 {safePost.ingredients || 'No ingredients listed'}
               </Text>
             </View>
 
             <View style={styles.recipeSection}>
-              <Text style={styles.sectionTitle}>Instructions</Text>
+              <Text style={styles.sectionTitle}>👨‍🍳 Instructions</Text>
               <Text style={styles.sectionContent}>
                 {safePost.instructions || 'No instructions provided'}
               </Text>
@@ -428,7 +435,7 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
         </View>
 
         <TouchableOpacity style={styles.moreButton}>
-          <Ionicons name="ellipsis-horizontal" size={20} color="#65676b" />
+          <Ionicons name="ellipsis-horizontal" size={20} color={COOKSY_COLORS.textLight} />
         </TouchableOpacity>
       </View>
 
@@ -443,13 +450,13 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
 
         <View style={styles.recipeInfo}>
           <View style={styles.recipeInfoItem}>
-            <Ionicons name="time-outline" size={16} color="#FF6B35" />
+            <Ionicons name="time-outline" size={16} color={COOKSY_COLORS.primary} />
             <Text style={styles.recipeInfoText}>
               {formatTime(safePost.prepTime)}
             </Text>
           </View>
           <View style={styles.recipeInfoItem}>
-            <Ionicons name="people-outline" size={16} color="#FF6B35" />
+            <Ionicons name="people-outline" size={16} color={COOKSY_COLORS.secondary} />
             <Text style={styles.recipeInfoText}>
               {safePost.servings || 0} servings
             </Text>
@@ -475,7 +482,7 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
           <Ionicons
             name={isLiked ? "heart" : "heart-outline"}
             size={20}
-            color={isLiked ? "#FF3B30" : "#65676b"}
+            color={isLiked ? COOKSY_COLORS.danger : COOKSY_COLORS.textLight}
           />
           <Text style={[styles.actionText, isLiked && styles.likedText]}>
             {likesCount}
@@ -486,18 +493,18 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
           style={styles.actionButton}
           onPress={() => setShowComments(true)}
         >
-          <Ionicons name="chatbubble-outline" size={20} color="#65676b" />
+          <Ionicons name="chatbubble-outline" size={20} color={COOKSY_COLORS.textLight} />
           <Text style={styles.actionText}>{comments.length}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
-          <Ionicons name="share-outline" size={20} color="#65676b" />
+          <Ionicons name="share-outline" size={20} color={COOKSY_COLORS.textLight} />
           <Text style={styles.actionText}>Share</Text>
         </TouchableOpacity>
 
         {safeCurrentUser.id && safePost.userId === safeCurrentUser.id && (
           <TouchableOpacity style={styles.actionButton} onPress={handleDelete}>
-            <Ionicons name="trash-outline" size={20} color="#FF3B30" />
+            <Ionicons name="trash-outline" size={20} color={COOKSY_COLORS.danger} />
           </TouchableOpacity>
         )}
       </View>
@@ -510,7 +517,7 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: COOKSY_COLORS.white,
     marginBottom: 8,
     paddingVertical: 12,
   },
@@ -530,30 +537,34 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     marginRight: 12,
+    borderWidth: 2,
+    borderColor: COOKSY_COLORS.primary,
   },
   userName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: COOKSY_COLORS.text,
   },
   timeStamp: {
     fontSize: 12,
-    color: '#666',
+    color: COOKSY_COLORS.textLight,
     marginTop: 2,
   },
   moreButton: {
     padding: 8,
+    backgroundColor: COOKSY_COLORS.background,
+    borderRadius: 20,
   },
   recipeTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: COOKSY_COLORS.text,
     marginHorizontal: 16,
     marginBottom: 8,
   },
   recipeDescription: {
     fontSize: 14,
-    color: '#666',
+    color: COOKSY_COLORS.textLight,
     marginHorizontal: 16,
     marginBottom: 12,
     lineHeight: 20,
@@ -573,8 +584,9 @@ const styles = StyleSheet.create({
   },
   recipeInfoText: {
     fontSize: 12,
-    color: '#666',
+    color: COOKSY_COLORS.textLight,
     marginLeft: 4,
+    fontWeight: '500',
   },
   categoryContainer: {
     flexDirection: 'row',
@@ -582,20 +594,22 @@ const styles = StyleSheet.create({
   },
   categoryTag: {
     fontSize: 12,
-    color: '#0866ff',
-    backgroundColor: '#e3f2fd',
+    color: COOKSY_COLORS.secondary,
+    backgroundColor: COOKSY_COLORS.background,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
     marginRight: 6,
+    fontWeight: '600',
   },
   meatTypeTag: {
     fontSize: 12,
-    color: '#4caf50',
-    backgroundColor: '#e8f5e8',
+    color: COOKSY_COLORS.accent,
+    backgroundColor: COOKSY_COLORS.background,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
+    fontWeight: '600',
   },
   recipeImage: {
     width: screenWidth,
@@ -610,7 +624,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: COOKSY_COLORS.border,
     marginTop: 12,
   },
   actionButton: {
@@ -618,20 +632,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 12,
+    backgroundColor: COOKSY_COLORS.background,
+    borderRadius: 20,
   },
   actionText: {
     fontSize: 14,
-    color: '#65676b',
+    color: COOKSY_COLORS.textLight,
     marginLeft: 4,
+    fontWeight: '500',
   },
   likedText: {
-    color: '#FF3B30',
+    color: COOKSY_COLORS.danger,
   },
   
   // Comments Modal Styles
   commentsModalContainer: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: COOKSY_COLORS.background,
     paddingTop: 50,
   },
   commentsHeader: {
@@ -641,12 +658,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: COOKSY_COLORS.border,
+    backgroundColor: COOKSY_COLORS.white,
   },
   commentsTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: COOKSY_COLORS.text,
+  },
+  closeButton: {
+    padding: 8,
+    backgroundColor: COOKSY_COLORS.background,
+    borderRadius: 20,
   },
   placeholder: {
     width: 32,
@@ -654,18 +677,21 @@ const styles = StyleSheet.create({
   commentsList: {
     flex: 1,
     paddingHorizontal: 16,
+    backgroundColor: COOKSY_COLORS.white,
   },
   commentItem: {
     flexDirection: 'row',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: COOKSY_COLORS.border,
   },
   commentAvatar: {
     width: 32,
     height: 32,
     borderRadius: 16,
     marginRight: 12,
+    borderWidth: 1,
+    borderColor: COOKSY_COLORS.primary,
   },
   commentContent: {
     flex: 1,
@@ -678,20 +704,22 @@ const styles = StyleSheet.create({
   commentUserName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: COOKSY_COLORS.text,
     marginRight: 8,
   },
   commentTime: {
     fontSize: 12,
-    color: '#666',
+    color: COOKSY_COLORS.textLight,
     flex: 1,
   },
   deleteCommentButton: {
     padding: 4,
+    backgroundColor: COOKSY_COLORS.background,
+    borderRadius: 12,
   },
   commentText: {
     fontSize: 14,
-    color: '#333',
+    color: COOKSY_COLORS.text,
     lineHeight: 18,
   },
   emptyComments: {
@@ -700,12 +728,13 @@ const styles = StyleSheet.create({
   },
   emptyCommentsText: {
     fontSize: 16,
-    color: '#666',
+    color: COOKSY_COLORS.textLight,
     marginBottom: 4,
+    fontWeight: '600',
   },
   emptyCommentsSubtext: {
     fontSize: 14,
-    color: '#999',
+    color: COOKSY_COLORS.textLight,
   },
   addCommentContainer: {
     flexDirection: 'row',
@@ -713,28 +742,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    backgroundColor: '#fff',
+    borderTopColor: COOKSY_COLORS.border,
+    backgroundColor: COOKSY_COLORS.white,
   },
   addCommentAvatar: {
     width: 32,
     height: 32,
     borderRadius: 16,
     marginRight: 12,
+    borderWidth: 1,
+    borderColor: COOKSY_COLORS.primary,
   },
   addCommentInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: COOKSY_COLORS.border,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
     maxHeight: 100,
     fontSize: 14,
+    backgroundColor: COOKSY_COLORS.background,
+    color: COOKSY_COLORS.text,
   },
   addCommentButton: {
     marginLeft: 8,
     padding: 8,
+    backgroundColor: COOKSY_COLORS.background,
+    borderRadius: 20,
   },
   addCommentButtonDisabled: {
     opacity: 0.5,
@@ -743,36 +778,34 @@ const styles = StyleSheet.create({
   // Full Recipe Modal Styles
   fullRecipeContainer: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: COOKSY_COLORS.background,
     paddingTop: 50,
   },
   fullRecipeHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    backgroundColor: '#fff',
+    borderBottomColor: COOKSY_COLORS.border,
+    backgroundColor: COOKSY_COLORS.white,
+    position: 'relative',
   },
-  closeButton: {
-    padding: 12,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-    borderRadius: 25,
+  fullRecipeCloseButton: {
     position: 'absolute',
     right: 16,
-    top: 16,
-    zIndex: 1001,
+    padding: 8,
+    backgroundColor: COOKSY_COLORS.background,
+    borderRadius: 20,
+    zIndex: 1,
   },
   fullRecipeTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
-    flex: 1,
-    marginRight: 60,
-    marginLeft: 0,
+    color: COOKSY_COLORS.text,
     textAlign: 'center',
+    paddingHorizontal: 60,
   },
   scrollContainer: {
     flex: 1,
@@ -784,6 +817,7 @@ const styles = StyleSheet.create({
   },
   fullRecipeContent: {
     padding: 16,
+    backgroundColor: COOKSY_COLORS.white,
   },
   recipeMetaRow: {
     flexDirection: 'row',
@@ -796,30 +830,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 16,
     marginBottom: 8,
+    backgroundColor: COOKSY_COLORS.background,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   recipeMetaText: {
     fontSize: 14,
-    color: '#666',
+    color: COOKSY_COLORS.text,
     marginLeft: 4,
+    fontWeight: '500',
   },
   fullRecipeDescription: {
     fontSize: 16,
-    color: '#333',
+    color: COOKSY_COLORS.text,
     lineHeight: 24,
     marginBottom: 20,
   },
   recipeSection: {
     marginBottom: 20,
+    backgroundColor: COOKSY_COLORS.background,
+    padding: 16,
+    borderRadius: 12,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: COOKSY_COLORS.text,
     marginBottom: 8,
   },
   sectionContent: {
     fontSize: 16,
-    color: '#666',
+    color: COOKSY_COLORS.text,
     lineHeight: 24,
   },
 });

@@ -1,4 +1,3 @@
-// LoginScreen.js - מעודכן עם MongoDB
 import React, { useState } from 'react';
 import {
   StyleSheet,
@@ -13,6 +12,20 @@ import {
 } from 'react-native';
 import { authService } from '../../../services/authService';
 import { useAuth } from '../../../services/AuthContext';
+
+// צבעי Cooksy
+const COOKSY_COLORS = {
+  primary: '#F5A623',
+  secondary: '#4ECDC4',
+  accent: '#1F3A93',
+  background: '#FFF8F0',
+  white: '#FFFFFF',
+  text: '#2C3E50',
+  textLight: '#7F8C8D',
+  border: '#E8E8E8',
+  success: '#27AE60',
+  danger: '#E74C3C',
+};
 
 export default function LoginScreen({ navigation }) {
   const { login } = useAuth();
@@ -67,7 +80,6 @@ export default function LoginScreen({ navigation }) {
     setIsFormValid(isEmailValid && isPasswordValid);
   };
   
-  // פונקציה מעודכנת עם שמירת נתוני משתמש
   const handleLogin = async () => {
     if (!form.email.trim() || !form.password.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
@@ -83,13 +95,13 @@ export default function LoginScreen({ navigation }) {
       });
 
       if (result.success) {
-  const { token, user } = result.data.data;
-  if (!token) throw new Error('Missing token from server');
+        const { token, user } = result.data.data;
+        if (!token) throw new Error('Missing token from server');
 
-  await login(token, user);
-} else {
-  Alert.alert('Login Failed', result.message);
-}
+        await login(token, user);
+      } else {
+        Alert.alert('Login Failed', result.message);
+      }
 
     } catch (error) {
       Alert.alert('Error', 'Connection failed. Please try again.');
@@ -103,21 +115,21 @@ export default function LoginScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#d3d3d3' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: COOKSY_COLORS.background }}>
       <View style={styles.container}>
         <View style={styles.header}>
-          <Image
-            alt="App Logo"
-            resizeMode="contain"
-            style={styles.headerImg}
-            source={{ uri: 'https://haraayonot.com/wp-content/uploads/2016/08/Logo.png' }} />
+          <View style={styles.logoContainer}>
+            <View style={styles.logoBackground}>
+              <Text style={styles.logoText}>🍳</Text>
+            </View>
+          </View>
 
           <Text style={styles.title}>
-            Sign in to <Text style={{ color: '#075eec' }}>Recipe Share</Text>
+            Welcome to <Text style={{ color: COOKSY_COLORS.secondary }}>Cooksy</Text>
           </Text>
 
           <Text style={styles.subtitle}>
-            Welcome to the recipe community
+            Join the delicious recipe community
           </Text>
         </View>
 
@@ -132,8 +144,8 @@ export default function LoginScreen({ navigation }) {
                 clearButtonMode="while-editing"
                 keyboardType="email-address"
                 onChangeText={handleEmailChange}
-                placeholder="example@example.com"
-                placeholderTextColor="#6b7280"
+                placeholder="example@cooksy.com"
+                placeholderTextColor={COOKSY_COLORS.textLight}
                 style={[
                   styles.inputControl,
                   emailError ? styles.inputError : null
@@ -153,8 +165,8 @@ export default function LoginScreen({ navigation }) {
                   autoCorrect={false}
                   clearButtonMode="while-editing"
                   onChangeText={handlePasswordChange}
-                  placeholder=""
-                  placeholderTextColor="#6b7280"
+                  placeholder="Enter your password"
+                  placeholderTextColor={COOKSY_COLORS.textLight}
                   style={[
                     styles.inputControl,
                     styles.passwordInput,
@@ -167,7 +179,9 @@ export default function LoginScreen({ navigation }) {
                   style={styles.visibilityIcon} 
                   onPress={togglePasswordVisibility}
                 >
-                  <Text>{isPasswordVisible ? '👁' : '👁‍🗨'}</Text>
+                  <Text style={styles.eyeIcon}>
+                    {isPasswordVisible ? '👁️' : '👁️‍🗨️'}
+                  </Text>
                 </TouchableOpacity>
               </View>
               {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
@@ -184,7 +198,7 @@ export default function LoginScreen({ navigation }) {
               ]}
             >
               {isLoading ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={COOKSY_COLORS.white} />
               ) : (
                 <Text style={styles.btnText}>Sign in</Text>
               )}
@@ -206,7 +220,7 @@ export default function LoginScreen({ navigation }) {
         }}>
         <Text style={styles.formFooter}>
           Don't have an account?{' '}
-          <Text style={{ textDecorationLine: 'underline' }}>Sign up</Text>
+          <Text style={{ textDecorationLine: 'underline', color: COOKSY_COLORS.secondary }}>Join Cooksy</Text>
         </Text>
       </TouchableOpacity>
     </SafeAreaView>
@@ -219,31 +233,47 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     flexBasis: 0,
     padding: 24,
+    backgroundColor: COOKSY_COLORS.background,
   },
   title: {
     fontSize: 31,
     fontWeight: '700',
-    color: '#1D2A32',
+    color: COOKSY_COLORS.accent,
     marginBottom: 6,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#929292',
+    color: COOKSY_COLORS.textLight,
+    textAlign: 'center',
   },
-  /** Header */
   header: {
     alignItems: 'center',
     justifyContent: 'center',
     marginVertical: 36,
   },
-  headerImg: {
-    width: 80,
-    height: 80,
-    alignSelf: 'center',
+  logoContainer: {
     marginBottom: 36,
   },
-  /** Form */
+  logoBackground: {
+    width: 100,
+    height: 100,
+    backgroundColor: COOKSY_COLORS.white,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    borderWidth: 3,
+    borderColor: COOKSY_COLORS.primary,
+  },
+  logoText: {
+    fontSize: 40,
+  },
   form: {
     flexGrow: 1,
     flexShrink: 1,
@@ -256,46 +286,51 @@ const styles = StyleSheet.create({
   formLink: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#075eec',
+    color: COOKSY_COLORS.secondary,
     textAlign: 'center',
   },
   formFooter: {
     paddingVertical: 24,
     fontSize: 15,
     fontWeight: '600',
-    color: '#222',
+    color: COOKSY_COLORS.text,
     textAlign: 'center',
     letterSpacing: 0.15,
+    backgroundColor: COOKSY_COLORS.white,
+    marginHorizontal: -24,
+    paddingHorizontal: 24,
+    borderTopWidth: 1,
+    borderTopColor: COOKSY_COLORS.border,
   },
-  /** Input */
   input: {
     marginBottom: 16,
   },
   inputLabel: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#222',
+    color: COOKSY_COLORS.text,
     marginBottom: 8,
   },
   inputControl: {
     height: 50,
-    backgroundColor: '#fff',
+    backgroundColor: COOKSY_COLORS.white,
     paddingHorizontal: 16,
     borderRadius: 12,
     fontSize: 15,
     fontWeight: '500',
-    color: '#222',
-    borderWidth: 1,
-    borderColor: '#C9D3DB',
+    color: COOKSY_COLORS.text,
+    borderWidth: 2,
+    borderColor: COOKSY_COLORS.border,
     borderStyle: 'solid',
   },
   inputError: {
-    borderColor: '#e74c3c',
+    borderColor: COOKSY_COLORS.danger,
   },
   errorText: {
-    color: '#e74c3c',
+    color: COOKSY_COLORS.danger,
     fontSize: 14,
     marginTop: 5,
+    fontWeight: '500',
   },
   passwordContainer: {
     position: 'relative',
@@ -308,27 +343,37 @@ const styles = StyleSheet.create({
   visibilityIcon: {
     position: 'absolute',
     right: 16,
+    backgroundColor: COOKSY_COLORS.background,
+    borderRadius: 15,
+    padding: 8,
   },
-  /** Button */
+  eyeIcon: {
+    fontSize: 16,
+  },
   btn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 30,
-    paddingVertical: 10,
+    borderRadius: 25,
+    paddingVertical: 12,
     paddingHorizontal: 20,
-    borderWidth: 1,
-    backgroundColor: '#075eec',
-    borderColor: '#075eec',
+    borderWidth: 0,
+    backgroundColor: COOKSY_COLORS.primary,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
   btnDisabled: {
-    backgroundColor: '#a9c0e9',
-    borderColor: '#a9c0e9',
+    backgroundColor: COOKSY_COLORS.textLight,
+    elevation: 0,
+    shadowOpacity: 0,
   },
   btnText: {
     fontSize: 18,
     lineHeight: 26,
     fontWeight: '600',
-    color: '#fff',
-  },
+    color: COOKSY_COLORS.white,
+  },
 });
