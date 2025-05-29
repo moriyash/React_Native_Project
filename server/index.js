@@ -285,6 +285,107 @@ app.delete('/api/recipes/:id', async (req, res) => {
   }
 });
 
+// Comments
+app.post('/api/recipes/:id/comments', async (req, res) => {
+  try {
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid recipe ID' });
+    }
+
+    const recipe = await Recipe.findById(req.params.id);
+    if (!recipe) {
+      return res.status(404).json({ message: 'Recipe not found' });
+    }
+
+    const { text, userId, userName } = req.body;
+    
+    if (!text || text.trim() === '') {
+      return res.status(400).json({ message: 'Comment text is required' });
+    }
+
+    const newComment = {
+      userId: userId || 'anonymous',
+      userName: userName || 'Anonymous User',
+      text: text.trim(),
+      createdAt: new Date()
+    };
+
+    if (!recipe.comments) recipe.comments = [];
+    recipe.comments.push(newComment);
+    
+    await recipe.save();
+    
+    console.log('Comment added successfully to recipe:', req.params.id);
+    res.status(201).json({ 
+      message: 'Comment added successfully',
+      comment: newComment,
+      commentsCount: recipe.comments.length 
+    });
+  } catch (error) {
+    console.error('Add comment error:', error);
+    res.status(500).json({ message: 'Failed to add comment' });
+  }
+});
+
+// Get comments for a recipe
+app.get('/api/recipes/:id/comments', async (req, res) => {
+  try {
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid recipe ID' });
+    }
+
+    const recipe = await Recipe.findById(req.params.id);
+    if (!recipe) {
+      return res.status(404).json({ message: 'Recipe not found' });
+    }
+
+    res.json(recipe.comments || []);
+  } catch (error) {
+    console.error('Get comments error:', error);
+    res.status(500).json({ message: 'Failed to get comments' });
+  }
+});
+
+// Delete a comment
+app.delete('/api/recipes/:id/comments/:commentId', async (req, res) => {
+  try {
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid recipe ID' });
+    }
+
+    const recipe = await Recipe.findById(req.params.id);
+    if (!recipe) {
+      return res.status(404).json({ message: 'Recipe not found' });
+    }
+
+    recipe.comments = recipe.comments.filter(comment => 
+      comment._id.toString() !== req.params.commentId
+    );
+    
+    await recipe.save();
+    
+    res.json({ 
+      message: 'Comment deleted successfully',
+      commentsCount: recipe.comments.length 
+    });
+  } catch (error) {
+    console.error('Delete comment error:', error);
+    res.status(500).json({ message: 'Failed to delete comment' });
+  }
+});
+
 // Likes
 app.post('/api/recipes/:id/like', async (req, res) => {
   try {
