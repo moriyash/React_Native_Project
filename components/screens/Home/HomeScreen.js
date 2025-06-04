@@ -97,9 +97,35 @@ const HomeScreen = () => {
     loadPosts();
   }, [loadPosts]);
 
-  const handleRefreshData = useCallback(() => {
-    loadPosts();
-  }, [loadPosts]);
+  const handleRefreshData = useCallback(async () => {
+  try {
+    const result = await recipeService.getAllRecipes();
+    
+    if (result.success) {
+      const postsArray = Array.isArray(result.data) ? result.data : [];
+      
+      // ✅ פורמט נקי של הפוסטים
+      const formattedPosts = postsArray.map(post => ({
+        ...post,
+        _id: post._id || post.id,
+        userName: post.userName || post.user?.name || post.author?.name || 'Anonymous',
+        userAvatar: post.userAvatar || post.user?.avatar || post.author?.avatar || null,
+        likes: Array.isArray(post.likes) ? post.likes : [],
+        comments: Array.isArray(post.comments) ? post.comments : [],
+        createdAt: post.createdAt || post.created_at || new Date().toISOString(),
+      }));
+      
+      // ✅ מיון לפי תאריך
+      const sortedPosts = formattedPosts.sort((a, b) => 
+        new Date(b.createdAt) - new Date(a.createdAt)
+      );
+      
+      setPosts(sortedPosts);
+    }
+  } catch (error) {
+    console.error('Refresh error:', error);
+  }
+}, []);
 
   const handleLogout = useCallback(() => {
     Alert.alert(

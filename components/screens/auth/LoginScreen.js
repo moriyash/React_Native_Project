@@ -235,13 +235,7 @@ export default function LoginScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          {/* 🔧 תיקון: כפתור בדיקה זמני */}
-          <TouchableOpacity
-            onPress={() => Alert.alert('Test', 'Button is working!')}
-            style={[styles.btn, { backgroundColor: 'red', marginTop: 10 }]}
-          >
-            <Text style={styles.btnText}>TEST BUTTON</Text>
-          </TouchableOpacity>
+
 
           <TouchableOpacity
             onPress={() => {

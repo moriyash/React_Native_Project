@@ -212,9 +212,11 @@ export const recipeService = {
     try {
       console.log('👍 Liking recipe on server:', recipeId);
       const response = await api.post(`/recipes/${recipeId}/like`);
+      console.log('✅ Like response:', response.data);
       return { success: true, data: response.data };
     } catch (error) {
       console.error('❌ Like recipe error:', error);
+      console.error('❌ Error response:', error.response?.data);
       return {
         success: false,
         message: error.response?.data?.message || error.message || 'Failed to like recipe'
@@ -226,9 +228,11 @@ export const recipeService = {
     try {
       console.log('👎 Unliking recipe on server:', recipeId);
       const response = await api.delete(`/recipes/${recipeId}/like`);
+      console.log('✅ Unlike response:', response.data);
       return { success: true, data: response.data };
     } catch (error) {
       console.error('❌ Unlike recipe error:', error);
+      console.error('❌ Error response:', error.response?.data);
       return {
         success: false,
         message: error.response?.data?.message || error.message || 'Failed to unlike recipe'

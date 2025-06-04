@@ -160,9 +160,12 @@ const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData }) => 
       console.log('📊 Like result:', result);
 
       if (result.success) {
-        if (onRefreshData) {
-          onRefreshData();
-        }
+        // 🔧 תיקון: חכה קצת ואז רענן כדי לראות את השינוי
+        setTimeout(() => {
+          if (onRefreshData) {
+            onRefreshData();
+          }
+        }, 100);
       } else {
         Alert.alert('Error', result.message || 'Failed to update like');
       }
@@ -433,8 +436,7 @@ const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData }) => 
     </Modal>
   );
 
-  // 🔧 הצגת מידע משתמש נוכחי לבדיקה (ניתן להסיר בייצור)
-  const currentUserDisplay = currentUser?.fullName || currentUser?.name || currentUser?.displayName || 'Anonymous';
+
 
   return (
     <View style={styles.container}>
@@ -462,12 +464,7 @@ const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData }) => 
         </TouchableOpacity>
       </View>
 
-      {/* מידע משתמש נוכחי לבדיקה */}
-      <View style={{ padding: 8, backgroundColor: '#f0f0f0', marginBottom: 8 }}>
-        <Text style={{ fontSize: 12, color: '#666' }}>
-          🔍 Debug: Current User: {currentUserDisplay} (ID: {currentUserId})
-        </Text>
-      </View>
+
 
       {/* Recipe Content */}
       <TouchableOpacity onPress={() => setShowFullRecipe(true)}>
