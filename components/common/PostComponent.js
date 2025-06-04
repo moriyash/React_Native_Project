@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { recipeService } from '../../services/recipeService';
+import { useAuth } from '../../services/AuthContext';
 
 // צבעי Cooksy
 const COOKSY_COLORS = {
@@ -34,29 +35,59 @@ const COOKSY_COLORS = {
 
 const { width: screenWidth } = Dimensions.get('window');
 
-const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
+const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData }) => {
   const safePost = post || {};
-  const safeCurrentUser = currentUser || {};
+  const { currentUser, isLoading } = useAuth();
   
-  const [isLiked, setIsLiked] = useState(
-    safePost.likes?.includes(safeCurrentUser.id) || false
-  );
-  const [likesCount, setLikesCount] = useState(safePost.likes?.length || 0);
+  // State
   const [showComments, setShowComments] = useState(false);
   const [showFullRecipe, setShowFullRecipe] = useState(false);
-  const [comments, setComments] = useState(safePost.comments || []);
   const [newComment, setNewComment] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [isSubmittingLike, setIsSubmittingLike] = useState(false);
 
-  console.log('🔍 PostComponent props:', {
-    postId: safePost._id || safePost.id,
-    currentUserId: safeCurrentUser.id,
-    postTitle: safePost.title
+  // אם עדיין טוען - הראה spinner
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', minHeight: 100 }]}>
+        <ActivityIndicator size="small" color={COOKSY_COLORS.primary} />
+        <Text style={{ marginTop: 8, color: COOKSY_COLORS.textLight }}>Loading...</Text>
+      </View>
+    );
+  }
+
+  // 🔧 תיקון: חישוב נתונים עם פתרון לבעיות ה-ID ושם המשתמש
+  const likes = safePost.likes || [];
+  const comments = safePost.comments || [];
+  const likesCount = likes.length;
+  
+  // 🔧 תיקון: מטפל בכל סוגי ה-ID האפשריים
+  const currentUserId = currentUser?.id || currentUser?._id || currentUser?.userId;
+  
+  // 🔧 תיקון: מטפל בכל סוגי שמות המשתמש האפשריים
+  const currentUserName = currentUser?.fullName || currentUser?.name || currentUser?.displayName || currentUser?.username || 'Anonymous';
+  
+  // 🔧 תיקון: בדיקת לייק מתקדמת
+  const isLiked = currentUserId ? likes.some(likeUserId => 
+    likeUserId === currentUserId || 
+    likeUserId === currentUser?.id || 
+    likeUserId === currentUser?._id
+  ) : false;
+  
+  const postId = safePost._id || safePost.id;
+
+  // 🔧 הוספת לוג לבדיקה
+  console.log('🔍 PostComponent Debug:', {
+    currentUserId,
+    currentUserName,
+    currentUser,
+    likes,
+    isLiked,
+    postId
   });
 
   const formatTime = (minutes) => {
     if (!minutes || isNaN(minutes)) return '0m';
-
     const numMinutes = parseInt(minutes);
     if (numMinutes < 60) {
       return `${numMinutes}m`;
@@ -95,44 +126,51 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
   };
 
   const handleLike = async () => {
-    if (!safePost._id && !safePost.id) {
-      console.error('❌ No post ID found');
+    // 🔧 תיקון: בדיקות מתקדמות יותר
+    if (!postId) {
+      console.error('❌ No postId available');
+      Alert.alert('Error', 'Post ID not found');
+      return;
+    }
+    
+    if (!currentUserId) {
+      console.error('❌ No currentUserId available');
+      Alert.alert('Error', 'Please login to like recipes');
+      return;
+    }
+    
+    if (isSubmittingLike) {
+      console.log('⏳ Already submitting like...');
       return;
     }
 
-    const postId = safePost._id || safePost.id;
+    console.log('👍 Attempting to like/unlike:', { postId, currentUserId, isLiked });
+    setIsSubmittingLike(true);
 
     try {
+      let result;
       if (isLiked) {
-        const result = await recipeService.unlikeRecipe(postId);
-        if (result.success) {
-          setIsLiked(false);
-          setLikesCount(prev => Math.max(0, prev - 1));
-          
-          if (onUpdate) {
-            onUpdate({
-              ...safePost,
-              likes: safePost.likes?.filter(id => id !== safeCurrentUser.id) || []
-            });
-          }
+        console.log('👎 Unliking recipe...');
+        result = await recipeService.unlikeRecipe(postId);
+      } else {
+        console.log('👍 Liking recipe...');
+        result = await recipeService.likeRecipe(postId);
+      }
+
+      console.log('📊 Like result:', result);
+
+      if (result.success) {
+        if (onRefreshData) {
+          onRefreshData();
         }
       } else {
-        const result = await recipeService.likeRecipe(postId);
-        if (result.success) {
-          setIsLiked(true);
-          setLikesCount(prev => prev + 1);
-          
-          if (onUpdate) {
-            onUpdate({
-              ...safePost,
-              likes: [...(safePost.likes || []), safeCurrentUser.id]
-            });
-          }
-        }
+        Alert.alert('Error', result.message || 'Failed to update like');
       }
     } catch (error) {
       console.error('❌ Like error:', error);
       Alert.alert('Error', 'Failed to update like status');
+    } finally {
+      setIsSubmittingLike(false);
     }
   };
 
@@ -142,45 +180,35 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
       return;
     }
 
-    const postId = safePost._id || safePost.id;
-    if (!postId) {
-      Alert.alert('Error', 'Invalid post ID');
+    if (!postId || isSubmittingComment) {
       return;
     }
 
+    if (!currentUserId) {
+      Alert.alert('Error', 'Please login to comment');
+      return;
+    }
+
+    console.log('💬 Adding comment:', { postId, currentUserId, currentUserName });
     setIsSubmittingComment(true);
 
     try {
       const result = await recipeService.addComment(postId, {
         text: newComment.trim(),
-        userId: safeCurrentUser.id,
-        userName: safeCurrentUser.fullName || safeCurrentUser.name || 'Anonymous'
+        userId: currentUserId,
+        userName: currentUserName
       });
 
       if (result.success) {
-        const newCommentObj = {
-          _id: Date.now().toString(),
-          text: newComment.trim(),
-          userId: safeCurrentUser.id,
-          userName: safeCurrentUser.fullName || safeCurrentUser.name || 'Anonymous',
-          userAvatar: safeCurrentUser.avatar,
-          createdAt: new Date().toISOString()
-        };
-
-        setComments(prev => [...prev, newCommentObj]);
         setNewComment('');
-
-        if (onUpdate) {
-          onUpdate({
-            ...safePost,
-            comments: [...comments, newCommentObj]
-          });
+        if (onRefreshData) {
+          onRefreshData();
         }
       } else {
         Alert.alert('Error', result.message || 'Failed to add comment');
       }
     } catch (error) {
-      console.error('❌ Add comment error:', error);
+      console.error('❌ Comment error:', error);
       Alert.alert('Error', 'Failed to add comment');
     } finally {
       setIsSubmittingComment(false);
@@ -188,41 +216,34 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
   };
 
   const handleDeleteComment = async (commentId) => {
-    const postId = safePost._id || safePost.id;
-    
     try {
       const result = await recipeService.deleteComment(postId, commentId);
       
       if (result.success) {
-        setComments(prev => prev.filter(comment => comment._id !== commentId));
-        
-        if (onUpdate) {
-          onUpdate({
-            ...safePost,
-            comments: comments.filter(comment => comment._id !== commentId)
-          });
+        if (onRefreshData) {
+          onRefreshData();
         }
       } else {
         Alert.alert('Error', result.message || 'Failed to delete comment');
       }
     } catch (error) {
-      console.error('❌ Delete comment error:', error);
       Alert.alert('Error', 'Failed to delete comment');
     }
   };
 
   const handleDelete = () => {
-    if (!safeCurrentUser.id || !safePost.userId) {
+    if (!currentUserId || !safePost.userId) {
       Alert.alert('Error', 'Cannot determine ownership');
       return;
     }
 
-    if (safePost.userId !== safeCurrentUser.id) {
+    // 🔧 תיקון: בדיקת בעלות מתקדמת יותר
+    const postOwnerId = safePost.userId || safePost.user?.id || safePost.user?._id;
+    if (postOwnerId !== currentUserId && postOwnerId !== currentUser?.id && postOwnerId !== currentUser?._id) {
       Alert.alert('Permission Denied', 'You can only delete your own recipes');
       return;
     }
 
-    const postId = safePost._id || safePost.id;
     if (!postId) {
       Alert.alert('Error', 'Invalid post ID');
       return;
@@ -264,7 +285,7 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
         <View style={styles.commentHeader}>
           <Text style={styles.commentUserName}>{item.userName || 'Anonymous'}</Text>
           <Text style={styles.commentTime}>{formatDate(item.createdAt)}</Text>
-          {item.userId === safeCurrentUser.id && (
+          {(item.userId === currentUserId || item.userId === currentUser?.id || item.userId === currentUser?._id) && (
             <TouchableOpacity 
               onPress={() => handleDeleteComment(item._id)}
               style={styles.deleteCommentButton}
@@ -315,7 +336,7 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
         <View style={styles.addCommentContainer}>
           <Image 
             source={{ 
-              uri: safeCurrentUser.avatar || 'https://randomuser.me/api/portraits/men/32.jpg' 
+              uri: currentUser?.avatar || currentUser?.userAvatar || 'https://randomuser.me/api/portraits/men/32.jpg' 
             }} 
             style={styles.addCommentAvatar} 
           />
@@ -359,7 +380,6 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
           <TouchableOpacity
             style={styles.fullRecipeCloseButton}
             onPress={() => setShowFullRecipe(false)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Ionicons name="close" size={28} color={COOKSY_COLORS.accent} />
           </TouchableOpacity>
@@ -413,6 +433,9 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
     </Modal>
   );
 
+  // 🔧 הצגת מידע משתמש נוכחי לבדיקה (ניתן להסיר בייצור)
+  const currentUserDisplay = currentUser?.fullName || currentUser?.name || currentUser?.displayName || 'Anonymous';
+
   return (
     <View style={styles.container}>
       {/* Post Header */}
@@ -437,6 +460,13 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
         <TouchableOpacity style={styles.moreButton}>
           <Ionicons name="ellipsis-horizontal" size={20} color={COOKSY_COLORS.textLight} />
         </TouchableOpacity>
+      </View>
+
+      {/* מידע משתמש נוכחי לבדיקה */}
+      <View style={{ padding: 8, backgroundColor: '#f0f0f0', marginBottom: 8 }}>
+        <Text style={{ fontSize: 12, color: '#666' }}>
+          🔍 Debug: Current User: {currentUserDisplay} (ID: {currentUserId})
+        </Text>
       </View>
 
       {/* Recipe Content */}
@@ -478,12 +508,20 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
 
       {/* Action Buttons */}
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
-          <Ionicons
-            name={isLiked ? "heart" : "heart-outline"}
-            size={20}
-            color={isLiked ? COOKSY_COLORS.danger : COOKSY_COLORS.textLight}
-          />
+        <TouchableOpacity 
+          style={[styles.actionButton, isSubmittingLike && styles.actionButtonDisabled]} 
+          onPress={handleLike}
+          disabled={isSubmittingLike}
+        >
+          {isSubmittingLike ? (
+            <ActivityIndicator size="small" color={COOKSY_COLORS.primary} />
+          ) : (
+            <Ionicons
+              name={isLiked ? "heart" : "heart-outline"}
+              size={20}
+              color={isLiked ? COOKSY_COLORS.danger : COOKSY_COLORS.textLight}
+            />
+          )}
           <Text style={[styles.actionText, isLiked && styles.likedText]}>
             {likesCount}
           </Text>
@@ -502,7 +540,7 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
           <Text style={styles.actionText}>Share</Text>
         </TouchableOpacity>
 
-        {safeCurrentUser.id && safePost.userId === safeCurrentUser.id && (
+        {currentUserId && (safePost.userId === currentUserId || safePost.userId === currentUser?.id || safePost.userId === currentUser?._id) && (
           <TouchableOpacity style={styles.actionButton} onPress={handleDelete}>
             <Ionicons name="trash-outline" size={20} color={COOKSY_COLORS.danger} />
           </TouchableOpacity>
@@ -515,6 +553,7 @@ const PostComponent = ({ post, currentUser, onUpdate, onDelete, onShare }) => {
   );
 };
 
+// הסטיילים נשארים זהים...
 const styles = StyleSheet.create({
   container: {
     backgroundColor: COOKSY_COLORS.white,
@@ -634,6 +673,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: COOKSY_COLORS.background,
     borderRadius: 20,
+  },
+  actionButtonDisabled: {
+    opacity: 0.6,
   },
   actionText: {
     fontSize: 14,

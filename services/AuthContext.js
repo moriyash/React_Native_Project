@@ -46,21 +46,38 @@ export const AuthProvider = ({ children }) => {
       throw new Error("Token is missing during login");
     }
 
+    console.log("📦 Login data received:", { token, userData }); // 🔧 לוג לבדיקה
+
     await AsyncStorage.setItem('userToken', token);
 
     if (userData) {
-      await AsyncStorage.setItem('userData', JSON.stringify(userData));
-      setCurrentUser(userData);
+      // 🔧 תיקון: וודא שהמידע נשמר נכון
+      const userToSave = {
+        id: userData.id || userData._id || userData.userId,
+        _id: userData._id || userData.id,
+        fullName: userData.fullName || userData.name || userData.displayName,
+        name: userData.name || userData.fullName,
+        email: userData.email,
+        avatar: userData.avatar || userData.userAvatar,
+        // שמור גם את כל השדות המקוריים למקרה הצורך
+        ...userData
+      };
+      
+      console.log("💾 Saving user data:", userToSave); // 🔧 לוג לבדיקה
+      
+      await AsyncStorage.setItem('userData', JSON.stringify(userToSave));
+      setCurrentUser(userToSave);
     }
 
     setUserToken(token);
     setIsLoggedIn(true);
+    
+    console.log("✅ Login successful"); // 🔧 לוג לבדיקה
   } catch (error) {
     console.error("Error during login:", error);
     throw error;
   }
 };
-
 
   const logout = async () => {
     try {

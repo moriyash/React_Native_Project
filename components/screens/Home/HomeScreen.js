@@ -37,8 +37,8 @@ const COOKSY_COLORS = {
   info: '#3498DB'
 };
 
-const HomeScreen = ({ currentUser }) => {
-  const { logout } = useAuth();
+const HomeScreen = () => {
+  const { logout, currentUser, isLoading: authLoading } = useAuth();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -46,17 +46,20 @@ const HomeScreen = ({ currentUser }) => {
   const [sharePost, setSharePost] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false); 
 
-  // טעינת פוסטים
+  if (authLoading) {
+    return (
+      <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={COOKSY_COLORS.primary} />
+        <Text style={styles.loaderText}>Loading...</Text>
+      </SafeAreaView>
+    );
+  } 
+
   const loadPosts = useCallback(async () => {
     try {
-      console.log('📥 Loading posts...');
       const result = await recipeService.getAllRecipes();
       
-      console.log('📥 Load result:', result);
-      
       if (result.success) {
-        console.log('✅ Posts loaded successfully:', result.data?.length || 0);
-        
         const postsArray = Array.isArray(result.data) ? result.data : [];
         
         const formattedPosts = postsArray.map(post => ({
@@ -73,14 +76,11 @@ const HomeScreen = ({ currentUser }) => {
           new Date(b.createdAt) - new Date(a.createdAt)
         );
         
-        console.log('✅ Formatted posts:', sortedPosts.length);
         setPosts(sortedPosts);
       } else {
-        console.error('❌ Failed to load posts:', result.message);
         Alert.alert('Error', `Failed to load recipes: ${result.message}`);
       }
     } catch (error) {
-      console.error('❌ Load posts error:', error);
       Alert.alert('Error', `Failed to load recipes: ${error.message}`);
     } finally {
       setLoading(false);
@@ -94,6 +94,10 @@ const HomeScreen = ({ currentUser }) => {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
+    loadPosts();
+  }, [loadPosts]);
+
+  const handleRefreshData = useCallback(() => {
     loadPosts();
   }, [loadPosts]);
 
@@ -119,38 +123,25 @@ const HomeScreen = ({ currentUser }) => {
   }, [logout]);
 
   const handlePostCreated = useCallback((newPost) => {
-    console.log('✅ New post created:', newPost);
-    setPosts(prevPosts => [newPost, ...prevPosts]);
-  }, []);
-
-  const handlePostUpdate = useCallback((updatedPost) => {
-    console.log('📝 Post updated:', updatedPost);
-    setPosts(prevPosts => 
-      prevPosts.map(post => 
-        post._id === updatedPost._id ? updatedPost : post
-      )
-    );
-  }, []);
+    handleRefreshData();
+  }, [handleRefreshData]);
 
   const handlePostDelete = useCallback(async (postId) => {
     try {
-      console.log('🗑️ Deleting post:', postId);
       const result = await recipeService.deleteRecipe(postId);
       
       if (result.success) {
-        setPosts(prevPosts => prevPosts.filter(post => post._id !== postId));
+        handleRefreshData();
         Alert.alert('Success', 'Recipe deleted successfully');
       } else {
         Alert.alert('Error', result.message || 'Failed to delete recipe');
       }
     } catch (error) {
-      console.error('❌ Delete error:', error);
       Alert.alert('Error', 'Failed to delete recipe');
     }
-  }, []);
+  }, [handleRefreshData]);
 
   const handleShare = useCallback((post) => {
-    console.log('📤 Sharing post:', post.title);
     setSharePost(post);
     setShowShareModal(true);
   }, []);
@@ -174,7 +165,6 @@ const HomeScreen = ({ currentUser }) => {
   }, []);
 
   const handleShareSubmit = useCallback((shareData) => {
-    console.log('📤 Share submitted:', shareData);
     Alert.alert('Success', 'Recipe shared successfully!');
     handleShareModalClose();
   }, [handleShareModalClose]);
@@ -217,21 +207,18 @@ const HomeScreen = ({ currentUser }) => {
   ), [currentUser]);
 
   const renderPost = useCallback(({ item, index }) => {
-    console.log('🔍 Rendering post with currentUser:', currentUser?.id);
-    
     return (
       <View style={styles.postContainer}>
         <PostComponent
           post={item || {}}
-          currentUser={currentUser || {}}
-          onUpdate={handlePostUpdate}
           onDelete={handlePostDelete}
           onShare={() => handleSystemShare(item)}
           onShareCustom={() => handleShare(item)}
+          onRefreshData={handleRefreshData}
         />
       </View>
     );
-  }, [currentUser, handlePostUpdate, handlePostDelete, handleSystemShare, handleShare]);
+  }, [handlePostDelete, handleSystemShare, handleShare, handleRefreshData]);
 
   const renderEmptyComponent = useCallback(() => (
     !loading && (
@@ -309,11 +296,6 @@ const HomeScreen = ({ currentUser }) => {
         maxToRenderPerBatch={5}
         windowSize={10}
         initialNumToRender={3}
-        getItemLayout={(data, index) => ({
-          length: 400,
-          offset: 400 * index,
-          index,
-        })}
       />
 
       {/* מודל יצירת פוסט מלא */}
@@ -335,12 +317,13 @@ const HomeScreen = ({ currentUser }) => {
               <View style={styles.modalPlaceholder} />
             </View>
             
+            {/* 🔧 תיקון: העברת currentUser לקומפוננט */}
             <CreatePostComponent
+              currentUser={currentUser}
               onPostCreated={(newPost) => {
                 handlePostCreated(newPost);
                 setShowCreateModal(false);
               }}
-              currentUser={currentUser}
             />
           </View>
         </Modal>

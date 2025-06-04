@@ -1,18 +1,17 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = 'http://192.168.1.222:3000/api'; // ✅ עדכן לIP הנכון של המחשב שלך
+const API_BASE_URL = 'http://192.168.1.222:3000/api'; 
 
-// יצירת instance של axios עם הגדרות בסיסיות
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 60000, // 60 שניות
+  timeout: 60000, 
 });
 
-// Interceptor להוספת token לכל בקשה
 api.interceptors.request.use(
   async (config) => {
     try {
@@ -30,7 +29,6 @@ api.interceptors.request.use(
   }
 );
 
-// Interceptor לתגובות
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -45,7 +43,6 @@ api.interceptors.response.use(
 );
 
 export const recipeService = {
-  // בדיקת חיבור לשרת
   testConnection: async () => {
     try {
       console.log('🔗 Testing server connection...');
@@ -58,23 +55,19 @@ export const recipeService = {
     }
   },
 
-  // יצירת מתכון חדש
   createRecipe: async (recipeData) => {
     try {
       console.log('📤 Creating recipe on server...', recipeData.title);
       
-      // ✅ בדיקה בסיסית של הנתונים
       if (!recipeData || !recipeData.title) {
         throw new Error('Missing required recipe data');
       }
 
-      // ✅ בדיקה אם יש תמונה
       if (recipeData.image) {
         console.log('📷 Image detected, using FormData...');
         
         const formData = new FormData();
         
-        // הוסף את כל השדות
         formData.append('title', recipeData.title || '');
         formData.append('description', recipeData.description || '');
         formData.append('ingredients', recipeData.ingredients || '');
@@ -87,7 +80,6 @@ export const recipeService = {
         formData.append('userName', recipeData.userName || '');
         formData.append('userAvatar', recipeData.userAvatar || '');
         
-        // הוסף תמונה
         formData.append('image', {
           uri: recipeData.image,
           type: 'image/jpeg',
@@ -98,7 +90,7 @@ export const recipeService = {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
-          timeout: 120000, // 2 דקות
+          timeout: 120000, 
           onUploadProgress: (progressEvent) => {
             const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
             console.log(`📊 Upload progress: ${progress}%`);
@@ -111,7 +103,6 @@ export const recipeService = {
       } else {
         console.log('📝 No image, using JSON...');
         
-        // ✅ ללא תמונה - שלח JSON רגיל
         const jsonData = {
           title: recipeData.title,
           description: recipeData.description,
@@ -144,18 +135,14 @@ export const recipeService = {
       let errorMessage = 'Failed to create recipe';
       
       if (error.response) {
-        // השרת החזיר תגובה עם שגיאה
         console.error('Server error response:', error.response.data);
         errorMessage = error.response.data?.message || `Server error: ${error.response.status}`;
       } else if (error.request) {
-        // הבקשה נשלחה אבל לא הייתה תגובה
         console.error('No response from server');
         errorMessage = 'No response from server. Check your connection.';
       } else if (error.code === 'ECONNABORTED') {
-        // timeout
         errorMessage = 'Upload took too long. Please try again.';
       } else {
-        // שגיאה אחרת
         errorMessage = error.message || 'Unknown error occurred';
       }
       

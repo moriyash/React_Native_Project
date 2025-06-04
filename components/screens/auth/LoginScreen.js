@@ -65,6 +65,13 @@ export default function LoginScreen({ navigation }) {
       return true;
     }
   };
+
+  // 🔧 תיקון: הוספת פונקציית validateForm
+  const validateForm = () => {
+    const isEmailValid = validateEmail(form.email);
+    const isPasswordValid = validatePassword(form.password);
+    return isEmailValid && isPasswordValid;
+  };
   
   const handleEmailChange = (text) => {
     setForm({ ...form, email: text });
@@ -80,32 +87,54 @@ export default function LoginScreen({ navigation }) {
     setIsFormValid(isEmailValid && isPasswordValid);
   };
   
+  // 🔧 תיקון: פונקציית handleLogin מתוקנת
   const handleLogin = async () => {
-    if (!form.email.trim() || !form.password.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
+    console.log('🔍 Login button pressed!');
+    console.log('🔍 Form data:', form);
+    
+    if (!validateForm()) {
+      console.log('❌ Form validation failed');
       return;
     }
-
+    
     setIsLoading(true);
     
     try {
-      const result = await authService.login({
-        email: form.email.trim(),
-        password: form.password
+      console.log('📤 Calling authService.login...');
+      // 🔧 תיקון: שימוש ב-form.email ו-form.password
+      const result = await authService.login({ 
+        email: form.email, 
+        password: form.password 
       });
-
+      
+      console.log('📥 AuthService result:', result);
+      
       if (result.success) {
-        const { token, user } = result.data.data;
-        if (!token) throw new Error('Missing token from server');
-
-        await login(token, user);
+        console.log('✅ Login successful, processing data...');
+        
+        const { token, user } = result.data;
+        console.log('🔍 Token:', token);
+        console.log('🔍 User:', user);
+        
+        if (token && user) {
+          console.log('📤 Calling context login...');
+          await login(token, user);
+          console.log('✅ Context login completed');
+          
+          Alert.alert('Welcome!', `Hello ${user.fullName || user.name || 'Chef'}!`);
+        } else {
+          console.log('❌ Missing token or user data');
+          Alert.alert('Error', 'Invalid response from server');
+        }
       } else {
+        console.log('❌ Login failed:', result.message);
         Alert.alert('Login Failed', result.message);
       }
-
     } catch (error) {
-      Alert.alert('Error', 'Connection failed. Please try again.');
+      console.error('❌ Login error:', error);
+      Alert.alert('Error', 'Login failed. Please try again.');
     } finally {
+      console.log('🏁 Setting loading to false');
       setIsLoading(false);
     }
   };
@@ -189,6 +218,7 @@ export default function LoginScreen({ navigation }) {
           </View>
 
           <View style={styles.formAction}>
+            {/* 🔧 תיקון: הסרת התנאי disabled - רק isLoading */}
             <TouchableOpacity 
               onPress={handleLogin}
               disabled={isLoading}
@@ -204,6 +234,14 @@ export default function LoginScreen({ navigation }) {
               )}
             </TouchableOpacity>
           </View>
+
+          {/* 🔧 תיקון: כפתור בדיקה זמני */}
+          <TouchableOpacity
+            onPress={() => Alert.alert('Test', 'Button is working!')}
+            style={[styles.btn, { backgroundColor: 'red', marginTop: 10 }]}
+          >
+            <Text style={styles.btnText}>TEST BUTTON</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => {

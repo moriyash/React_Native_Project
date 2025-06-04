@@ -131,66 +131,73 @@ const CreatePostComponent = ({ onPostCreated, currentUser }) => {
   };
 
   const handleSubmit = async () => {
-    console.log('🔍 Submitting form...');
-    
-    if (!validateForm()) {
-      Alert.alert('Missing Information', 'Please fill in all required fields to share your delicious recipe!');
-      return;
-    }
+  console.log('🔍 Submitting form...');
+  
+  if (!validateForm()) {
+    Alert.alert('Missing Information', 'Please fill in all required fields to share your delicious recipe!');
+    return;
+  }
 
-    setIsLoading(true);
+  setIsLoading(true);
 
     try {
-      const totalMinutes = (parseInt(prepTimeHours) || 0) * 60 + (parseInt(prepTimeMinutes) || 0);
+    const totalMinutes = (parseInt(prepTimeHours) || 0) * 60 + (parseInt(prepTimeMinutes) || 0);
+    
+    const recipeData = {
+      title: title.trim(),
+      description: description.trim(),
+      ingredients: ingredients.trim(),
+      instructions: instructions.trim(),
+      category: category,
+      meatType: meatType,
+      prepTime: totalMinutes,
+      servings: parseInt(servings) || 1,
+      image: image ? image.uri : null,
+      // 🔧 תיקון: שליחת כל סוגי ה-ID האפשריים
+      userId: currentUser?.id || currentUser?._id || currentUser?.userId || 'unknown',
+      // 🔧 תיקון: שליחת שם מלא נכון
+      userName: currentUser?.fullName || currentUser?.name || currentUser?.displayName || currentUser?.username || 'Anonymous Chef',
+      userAvatar: currentUser?.avatar || currentUser?.userAvatar || null
+    };
+
+    console.log('🔍 Recipe data with user info:', {
+      userId: recipeData.userId,
+      userName: recipeData.userName,
+      userAvatar: recipeData.userAvatar,
+      currentUser: currentUser
+    });
+
+    const result = await recipeService.createRecipe(recipeData);
+
+    if (result && result.success) {
+      Alert.alert('Recipe Shared! 🍳', 'Your delicious recipe has been shared with the Cooksy community!');
       
-      const recipeData = {
-        title: title.trim(),
-        description: description.trim(),
-        ingredients: ingredients.trim(),
-        instructions: instructions.trim(),
-        category: category,
-        meatType: meatType,
-        prepTime: totalMinutes,
-        servings: parseInt(servings) || 1,
-        image: image ? image.uri : null,
-        userId: currentUser ? currentUser.id : 'unknown',
-        userName: currentUser ? (currentUser.fullName || currentUser.name || 'Anonymous Chef') : 'Anonymous Chef',
-        userAvatar: currentUser ? currentUser.avatar : null
-      };
-
-      console.log('🔍 Recipe data:', recipeData);
-
-      const result = await recipeService.createRecipe(recipeData);
-
-      if (result && result.success) {
-        Alert.alert('Recipe Shared! 🍳', 'Your delicious recipe has been shared with the Cooksy community!');
-        
-        // Reset form
-        setTitle('');
-        setDescription('');
-        setIngredients('');
-        setInstructions('');
-        setCategory('');
-        setMeatType('');
-        setPrepTimeHours('');
-        setPrepTimeMinutes('');
-        setServings('');
-        setImage(null);
-        setErrors({});
-        
-        if (onPostCreated) {
-          onPostCreated(result.data);
-        }
-      } else {
-        Alert.alert('Upload Failed', result ? result.message : 'Failed to share recipe. Please try again.');
+      // Reset form
+      setTitle('');
+      setDescription('');
+      setIngredients('');
+      setInstructions('');
+      setCategory('');
+      setMeatType('');
+      setPrepTimeHours('');
+      setPrepTimeMinutes('');
+      setServings('');
+      setImage(null);
+      setErrors({});
+      
+      if (onPostCreated) {
+        onPostCreated(result.data);
       }
-    } catch (error) {
-      console.error('Submit error:', error);
-      Alert.alert('Connection Error', 'Unable to share recipe. Please check your connection and try again.');
-    } finally {
-      setIsLoading(false);
+    } else {
+      Alert.alert('Upload Failed', result ? result.message : 'Failed to share recipe. Please try again.');
     }
-  };
+  } catch (error) {
+    console.error('Submit error:', error);
+    Alert.alert('Connection Error', 'Unable to share recipe. Please check your connection and try again.');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const clearError = (field) => {
     if (errors[field]) {
