@@ -3,6 +3,8 @@ import { createStackNavigator } from '@react-navigation/stack';
 import HomeScreen from '../components/screens/Home/HomeScreen';
 import ProfileScreen from '../components/screens/Profile/ProfileScreen';
 import EditProfileScreen from '../components/screens/Profile/EditProfileScreen';
+import GroupsScreen from '../components/screens/Groups/GroupsScreen';
+import CreateGroupComponent from '../components/groups/CreateGroupComponent';
 
 
 const Stack = createStackNavigator(); 
@@ -25,7 +27,6 @@ export default function HomeNavigator() {
         }} 
       />
 
-      {/* הוספת מסך עריכת פרופיל */}
       <Stack.Screen 
         name="EditProfile" 
         component={EditProfileScreen} 
@@ -34,6 +35,36 @@ export default function HomeNavigator() {
           presentation: 'modal'
         }} 
       />
+
+      {/* הוספת מסכי קבוצות */}
+      <Stack.Screen 
+        name="Groups" 
+        component={GroupsScreen} 
+        options={{ 
+          headerShown: false,
+          presentation: 'modal'
+        }} 
+      />
+
+      <Stack.Screen 
+        name="CreateGroup" 
+        component={CreateGroupComponent} 
+        options={{ 
+          headerShown: false,
+          presentation: 'modal'
+        }} 
+      />
+
+      {/* TODO: הוסף בעתיד */}
+      {/* 
+      <Stack.Screen 
+        name="GroupDetails" 
+        component={GroupDetailsScreen} 
+        options={{ 
+          headerShown: false 
+        }} 
+      />
+      */}
     </Stack.Navigator>
   );
 }

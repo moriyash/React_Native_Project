@@ -119,8 +119,13 @@ const ProfileScreen = ({ route, navigation }) => {
   }, [userId]);
 
   const handleEditProfile = () => {
-  // נווט למסך עריכת הפרופיל
-  navigation.navigate('EditProfile');
+    // נווט למסך עריכת הפרופיל
+    navigation.navigate('EditProfile');
+  };
+
+  const handleMyGroups = () => {
+    // נווט למסך הקבוצות שלי
+    navigation.navigate('Groups');
   };
 
   const handleSettings = () => {
@@ -192,6 +197,35 @@ const ProfileScreen = ({ route, navigation }) => {
           </>
         )}
       </View>
+
+      {/* Quick Actions - רק בפרופיל שלי */}
+      {isOwnProfile && (
+        <View style={styles.quickActions}>
+          <TouchableOpacity style={styles.quickActionItem} onPress={handleMyGroups}>
+            <View style={styles.quickActionIcon}>
+              <Ionicons name="people" size={20} color={COOKSY_COLORS.secondary} />
+            </View>
+            <Text style={styles.quickActionText}>My Groups</Text>
+            <Ionicons name="chevron-forward" size={16} color={COOKSY_COLORS.textLight} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.quickActionItem}>
+            <View style={styles.quickActionIcon}>
+              <Ionicons name="bookmark" size={20} color={COOKSY_COLORS.primary} />
+            </View>
+            <Text style={styles.quickActionText}>Saved Recipes</Text>
+            <Ionicons name="chevron-forward" size={16} color={COOKSY_COLORS.textLight} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.quickActionItem}>
+            <View style={styles.quickActionIcon}>
+              <Ionicons name="analytics" size={20} color={COOKSY_COLORS.accent} />
+            </View>
+            <Text style={styles.quickActionText}>Recipe Stats</Text>
+            <Ionicons name="chevron-forward" size={16} color={COOKSY_COLORS.textLight} />
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 
@@ -412,6 +446,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 20,
   },
   editButton: {
     flexDirection: 'row',
@@ -451,6 +486,35 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: COOKSY_COLORS.border,
+  },
+  quickActions: {
+    backgroundColor: COOKSY_COLORS.background,
+    borderRadius: 12,
+    padding: 4,
+  },
+  quickActionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: COOKSY_COLORS.white,
+    marginVertical: 2,
+    borderRadius: 8,
+  },
+  quickActionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COOKSY_COLORS.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  quickActionText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '500',
+    color: COOKSY_COLORS.text,
   },
   tabBar: {
     flexDirection: 'row',

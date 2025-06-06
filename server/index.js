@@ -20,6 +20,355 @@ app.use((req, res, next) => {
   next();
 });
 
+// ============ GROUP ROUTES ============
+
+// Create new group
+app.post('/api/groups', upload.any(), async (req, res) => {
+  try {
+    console.log('=== Create Group Debug ===');
+    console.log('MongoDB connected:', isMongoConnected());
+    
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const formData = req.body;
+    console.log('Group data received:', formData);
+
+    if (!formData.name || formData.name.trim() === '') {
+      return res.status(400).json({ message: 'Group name is required' });
+    }
+
+    if (!formData.creatorId) {
+      return res.status(400).json({ message: 'Creator ID is required' });
+    }
+
+    // טיפול בתמונת הקבוצה
+    let imageData = null;
+    if (req.files && req.files.length > 0) {
+      const imageFile = req.files.find(file => 
+        file.fieldname === 'image' || 
+        file.mimetype.startsWith('image/')
+      );
+      
+      if (imageFile) {
+        const base64Image = imageFile.buffer.toString('base64');
+        imageData = `data:${imageFile.mimetype};base64,${base64Image}`;
+        console.log('Group image converted to base64');
+      }
+    }
+
+    if (!imageData && formData.image) {
+      imageData = formData.image;
+    }
+
+    // יצירת הקבוצה
+    const groupData = {
+      name: formData.name.trim(),
+      description: formData.description || '',
+      image: imageData,
+      creatorId: formData.creatorId,
+      isPrivate: formData.isPrivate === 'true' || formData.isPrivate === true,
+      category: formData.category || 'General',
+      rules: formData.rules || '',
+      members: [{
+        userId: formData.creatorId,
+        role: 'admin',
+        joinedAt: new Date()
+      }],
+      pendingRequests: [],
+      settings: {
+        allowMemberPosts: formData.allowMemberPosts !== 'false',
+        requireApproval: formData.requireApproval !== 'false',
+        allowInvites: formData.allowInvites !== 'false'
+      }
+    };
+
+    const group = new Group(groupData);
+    const savedGroup = await group.save();
+    
+    console.log('Group created successfully:', savedGroup._id);
+
+    // החזרת הקבוצה עם נתוני היוצר
+    const creator = await User.findById(savedGroup.creatorId);
+    const enrichedGroup = {
+      ...savedGroup.toObject(),
+      creatorName: creator ? creator.fullName : 'Unknown',
+      creatorAvatar: creator ? creator.avatar : null,
+      membersCount: savedGroup.members.length,
+      postsCount: 0
+    };
+
+    res.status(201).json(enrichedGroup);
+  } catch (error) {
+    console.error('=== CREATE GROUP ERROR ===');
+    console.error('Error:', error);
+    res.status(500).json({ message: 'Failed to create group' });
+  }
+});
+
+// Get all groups (public + user's private groups)
+app.get('/api/groups', async (req, res) => {
+  try {
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { userId } = req.query;
+    
+    let groups;
+    if (userId) {
+      // קבוצות ציבוריות + קבוצות פרטיות שהמשתמש חבר בהן
+      groups = await Group.find({
+        $or: [
+          { isPrivate: false },
+          { 'members.userId': userId }
+        ]
+      }).sort({ createdAt: -1 });
+    } else {
+      // רק קבוצות ציבוריות
+      groups = await Group.find({ isPrivate: false }).sort({ createdAt: -1 });
+    }
+
+    // העשרה עם נתונים נוספים
+    const enrichedGroups = await Promise.all(
+      groups.map(async (group) => {
+        const creator = await User.findById(group.creatorId);
+        const postsCount = await GroupPost.countDocuments({ groupId: group._id });
+        
+        return {
+          ...group.toObject(),
+          creatorName: creator ? creator.fullName : 'Unknown',
+          creatorAvatar: creator ? creator.avatar : null,
+          membersCount: group.members.length,
+          postsCount: postsCount
+        };
+      })
+    );
+
+    res.json(enrichedGroups);
+  } catch (error) {
+    console.error('Get groups error:', error);
+    res.status(500).json({ message: 'Failed to fetch groups' });
+  }
+});
+
+// Get single group with details
+app.get('/api/groups/:id', async (req, res) => {
+  try {
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid group ID' });
+    }
+
+    const group = await Group.findById(req.params.id);
+    if (!group) {
+      return res.status(404).json({ message: 'Group not found' });
+    }
+
+    // העשרה עם נתונים
+    const creator = await User.findById(group.creatorId);
+    const postsCount = await GroupPost.countDocuments({ groupId: group._id });
+    
+    // רשימת חברים עם פרטים
+    const membersDetails = await Promise.all(
+      group.members.map(async (member) => {
+        const user = await User.findById(member.userId);
+        return {
+          ...member.toObject(),
+          userName: user ? user.fullName : 'Unknown',
+          userAvatar: user ? user.avatar : null
+        };
+      })
+    );
+
+    const enrichedGroup = {
+      ...group.toObject(),
+      creatorName: creator ? creator.fullName : 'Unknown',
+      creatorAvatar: creator ? creator.avatar : null,
+      membersCount: group.members.length,
+      postsCount: postsCount,
+      membersDetails: membersDetails
+    };
+
+    res.json(enrichedGroup);
+  } catch (error) {
+    console.error('Get group error:', error);
+    res.status(500).json({ message: 'Failed to fetch group' });
+  }
+});
+
+// Join group (request to join)
+app.post('/api/groups/:id/join', async (req, res) => {
+  try {
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    const group = await Group.findById(req.params.id);
+    if (!group) {
+      return res.status(404).json({ message: 'Group not found' });
+    }
+
+    // בדיקה אם כבר חבר
+    const isMember = group.members.some(member => member.userId === userId);
+    if (isMember) {
+      return res.status(400).json({ message: 'Already a member of this group' });
+    }
+
+    // בדיקה אם כבר יש בקשה ממתינה
+    const hasPendingRequest = group.pendingRequests.some(request => request.userId === userId);
+    if (hasPendingRequest) {
+      return res.status(400).json({ message: 'Join request already pending' });
+    }
+
+    if (group.isPrivate && group.settings.requireApproval) {
+      // הוספה לרשימת ממתינים
+      group.pendingRequests.push({
+        userId: userId,
+        requestedAt: new Date()
+      });
+      await group.save();
+      
+      res.json({ message: 'Join request sent successfully', status: 'pending' });
+    } else {
+      // הצטרפות ישירה
+      group.members.push({
+        userId: userId,
+        role: 'member',
+        joinedAt: new Date()
+      });
+      await group.save();
+      
+      res.json({ message: 'Joined group successfully', status: 'joined' });
+    }
+  } catch (error) {
+    console.error('Join group error:', error);
+    res.status(500).json({ message: 'Failed to join group' });
+  }
+});
+
+// Approve/Reject join request (admin only)
+app.put('/api/groups/:id/requests/:userId', async (req, res) => {
+  try {
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { action, adminId } = req.body; // action: 'approve' or 'reject'
+    
+    const group = await Group.findById(req.params.id);
+    if (!group) {
+      return res.status(404).json({ message: 'Group not found' });
+    }
+
+    // בדיקת הרשאות אדמין
+    const isAdmin = group.members.some(member => 
+      member.userId === adminId && member.role === 'admin'
+    );
+    if (!isAdmin) {
+      return res.status(403).json({ message: 'Admin privileges required' });
+    }
+
+    const { userId } = req.params;
+    
+    // מציאת הבקשה
+    const requestIndex = group.pendingRequests.findIndex(request => request.userId === userId);
+    if (requestIndex === -1) {
+      return res.status(404).json({ message: 'Join request not found' });
+    }
+
+    // הסרת הבקשה מהרשימה
+    group.pendingRequests.splice(requestIndex, 1);
+
+    if (action === 'approve') {
+      // הוספה כחבר
+      group.members.push({
+        userId: userId,
+        role: 'member',
+        joinedAt: new Date()
+      });
+    }
+
+    await group.save();
+    
+    const message = action === 'approve' ? 'User approved successfully' : 'User rejected successfully';
+    res.json({ message, action });
+  } catch (error) {
+    console.error('Handle request error:', error);
+    res.status(500).json({ message: 'Failed to handle request' });
+  }
+});
+
+// Leave group
+app.delete('/api/groups/:id/members/:userId', async (req, res) => {
+  try {
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const group = await Group.findById(req.params.id);
+    if (!group) {
+      return res.status(404).json({ message: 'Group not found' });
+    }
+
+    const { userId } = req.params;
+    
+    // לא ניתן להסיר את היוצר
+    if (group.creatorId === userId) {
+      return res.status(400).json({ message: 'Group creator cannot leave the group' });
+    }
+
+    // הסרת החבר
+    group.members = group.members.filter(member => member.userId !== userId);
+    await group.save();
+    
+    res.json({ message: 'Left group successfully' });
+  } catch (error) {
+    console.error('Leave group error:', error);
+    res.status(500).json({ message: 'Failed to leave group' });
+  }
+});
+
+// Delete group (creator only)
+app.delete('/api/groups/:id', async (req, res) => {
+  try {
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { userId } = req.body;
+    
+    const group = await Group.findById(req.params.id);
+    if (!group) {
+      return res.status(404).json({ message: 'Group not found' });
+    }
+
+    if (group.creatorId !== userId) {
+      return res.status(403).json({ message: 'Only group creator can delete the group' });
+    }
+
+    // מחיקת כל הפוסטים של הקבוצה
+    await GroupPost.deleteMany({ groupId: req.params.id });
+    
+    // מחיקת הקבוצה
+    await Group.findByIdAndDelete(req.params.id);
+    
+    res.json({ message: 'Group deleted successfully' });
+  } catch (error) {
+    console.error('Delete group error:', error);
+    res.status(500).json({ message: 'Failed to delete group' });
+  }
+});
+
 // Get user profile
 app.get('/api/user/profile/:userId', async (req, res) => {
   try {
@@ -100,6 +449,58 @@ const UserSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const User = mongoose.model('User', UserSchema);
+
+// Group schema - מערכת קבוצות
+const GroupSchema = new mongoose.Schema({
+  name: { type: String, required: true, maxlength: 100 },
+  description: { type: String, maxlength: 500 },
+  image: { type: String, maxlength: 10000000 }, // תמונת נושא של הקבוצה
+  creatorId: { type: String, required: true }, // יוצר הקבוצה
+  isPrivate: { type: Boolean, default: false }, // קבוצה פרטית או ציבורית
+  category: { type: String, default: 'General' }, // קטגוריית הקבוצה
+  members: [{
+    userId: String,
+    role: { type: String, enum: ['admin', 'member'], default: 'member' },
+    joinedAt: { type: Date, default: Date.now }
+  }],
+  pendingRequests: [{ // בקשות להצטרפות
+    userId: String,
+    requestedAt: { type: Date, default: Date.now }
+  }],
+  rules: { type: String, maxlength: 1000 }, // חוקי הקבוצה
+  settings: {
+    allowMemberPosts: { type: Boolean, default: true },
+    requireApproval: { type: Boolean, default: true },
+    allowInvites: { type: Boolean, default: true }
+  }
+}, { timestamps: true });
+
+const Group = mongoose.model('Group', GroupSchema);
+
+// GroupPost schema - פוסטים של קבוצות
+const GroupPostSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  description: String,
+  ingredients: String,
+  instructions: String,
+  category: { type: String, default: 'General' },
+  meatType: { type: String, default: 'Mixed' },
+  prepTime: { type: Number, default: 0 },
+  servings: { type: Number, default: 1 },
+  image: { type: String, maxlength: 10000000 },
+  userId: { type: String, required: true },
+  groupId: { type: String, required: true }, // שייך לקבוצה ספציפית
+  likes: [{ type: String }],
+  comments: [{
+    userId: String,
+    userName: String,
+    text: String,
+    createdAt: { type: Date, default: Date.now }
+  }],
+  isApproved: { type: Boolean, default: false } // צריך אישור אדמין
+}, { timestamps: true });
+
+const GroupPost = mongoose.model('GroupPost', GroupPostSchema);
 
 // Recipe schema - עם reference למשתמש במקום שכפול נתונים
 const RecipeSchema = new mongoose.Schema({
