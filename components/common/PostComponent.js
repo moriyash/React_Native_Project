@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { recipeService } from '../../services/recipeService';
 import { useAuth } from '../../services/AuthContext';
+import UserAvatar from './UserAvatar';
 
 // צבעי Cooksy
 const COOKSY_COLORS = {
@@ -35,16 +36,26 @@ const COOKSY_COLORS = {
 
 const { width: screenWidth } = Dimensions.get('window');
 
-const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData }) => {
+const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData, navigation }) => {
   const safePost = post || {};
   const { currentUser, isLoading } = useAuth();
   
-  // State
+  // State מקומי ללייקים ותגובות
+  const [localLikes, setLocalLikes] = useState(safePost.likes || []);
+  const [localComments, setLocalComments] = useState(safePost.comments || []);
+  
+  // State אחר
   const [showComments, setShowComments] = useState(false);
   const [showFullRecipe, setShowFullRecipe] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [isSubmittingLike, setIsSubmittingLike] = useState(false);
+
+  // עדכון ה-state המקומי כשהפוסט משתנה
+  useEffect(() => {
+    setLocalLikes(safePost.likes || []);
+    setLocalComments(safePost.comments || []);
+  }, [safePost.likes, safePost.comments]);
 
   // אם עדיין טוען - הראה spinner
   if (isLoading) {
@@ -56,35 +67,24 @@ const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData }) => 
     );
   }
 
-  // 🔧 תיקון: חישוב נתונים עם פתרון לבעיות ה-ID ושם המשתמש
-  const likes = safePost.likes || [];
-  const comments = safePost.comments || [];
-  const likesCount = likes.length;
+  // חישוב נתונים עם ה-state המקומי
+  const likesCount = localLikes.length;
+  const comments = localComments;
   
-  // 🔧 תיקון: מטפל בכל סוגי ה-ID האפשריים
+  // מטפל בכל סוגי ה-ID האפשריים
   const currentUserId = currentUser?.id || currentUser?._id || currentUser?.userId;
   
-  // 🔧 תיקון: מטפל בכל סוגי שמות המשתמש האפשריים
+  // מטפל בכל סוגי שמות המשתמש האפשריים
   const currentUserName = currentUser?.fullName || currentUser?.name || currentUser?.displayName || currentUser?.username || 'Anonymous';
   
-  // 🔧 תיקון: בדיקת לייק מתקדמת
-  const isLiked = currentUserId ? likes.some(likeUserId => 
+  // בדיקת לייק עם ה-state המקומי
+  const isLiked = currentUserId ? localLikes.some(likeUserId => 
     likeUserId === currentUserId || 
     likeUserId === currentUser?.id || 
     likeUserId === currentUser?._id
   ) : false;
   
   const postId = safePost._id || safePost.id;
-
-  // 🔧 הוספת לוג לבדיקה
-  console.log('🔍 PostComponent Debug:', {
-    currentUserId,
-    currentUserName,
-    currentUser,
-    likes,
-    isLiked,
-    postId
-  });
 
   const formatTime = (minutes) => {
     if (!minutes || isNaN(minutes)) return '0m';
@@ -125,8 +125,8 @@ const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData }) => 
     }
   };
 
+  // עדכון מיידי של הלייק
   const handleLike = async () => {
-    // 🔧 תיקון: בדיקות מתקדמות יותר
     if (!postId) {
       console.error('❌ No postId available');
       Alert.alert('Error', 'Post ID not found');
@@ -147,6 +147,14 @@ const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData }) => 
     console.log('👍 Attempting to like/unlike:', { postId, currentUserId, isLiked });
     setIsSubmittingLike(true);
 
+    // עדכון אופטימיסטי - עדכן מיידית לפני השרת
+    const newLikes = isLiked 
+      ? localLikes.filter(id => id !== currentUserId && id !== currentUser?.id && id !== currentUser?._id)
+      : [...localLikes, currentUserId];
+    
+    setLocalLikes(newLikes);
+    console.log('🔄 Updated local likes optimistically:', newLikes);
+
     try {
       let result;
       if (isLiked) {
@@ -160,16 +168,26 @@ const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData }) => 
       console.log('📊 Like result:', result);
 
       if (result.success) {
-        // 🔧 תיקון: חכה קצת ואז רענן כדי לראות את השינוי
+        // עדכן מהשרת אחרי הצלחה
+        if (result.data && result.data.likes) {
+          setLocalLikes(result.data.likes);
+          console.log('✅ Updated likes from server:', result.data.likes);
+        }
+        
+        // רענן גם את הנתונים הכלליים
         setTimeout(() => {
           if (onRefreshData) {
             onRefreshData();
           }
-        }, 100);
+        }, 500);
       } else {
+        // במקרה של שגיאה, החזר את המצב הקודם
+        setLocalLikes(safePost.likes || []);
         Alert.alert('Error', result.message || 'Failed to update like');
       }
     } catch (error) {
+      // במקרה של שגיאה, החזר את המצב הקודם
+      setLocalLikes(safePost.likes || []);
       console.error('❌ Like error:', error);
       Alert.alert('Error', 'Failed to update like status');
     } finally {
@@ -204,6 +222,12 @@ const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData }) => 
 
       if (result.success) {
         setNewComment('');
+        
+        // עדכון מיידי של התגובות
+        if (result.data && result.data.comments) {
+          setLocalComments(result.data.comments);
+        }
+        
         if (onRefreshData) {
           onRefreshData();
         }
@@ -223,6 +247,9 @@ const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData }) => 
       const result = await recipeService.deleteComment(postId, commentId);
       
       if (result.success) {
+        // עדכון מיידי של התגובות
+        setLocalComments(prev => prev.filter(comment => comment._id !== commentId));
+        
         if (onRefreshData) {
           onRefreshData();
         }
@@ -240,7 +267,7 @@ const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData }) => 
       return;
     }
 
-    // 🔧 תיקון: בדיקת בעלות מתקדמת יותר
+    // בדיקת בעלות מתקדמת יותר
     const postOwnerId = safePost.userId || safePost.user?.id || safePost.user?._id;
     if (postOwnerId !== currentUserId && postOwnerId !== currentUser?.id && postOwnerId !== currentUser?._id) {
       Alert.alert('Permission Denied', 'You can only delete your own recipes');
@@ -276,13 +303,20 @@ const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData }) => 
     }
   };
 
+  const handleProfilePress = () => {
+    if (navigation) {
+      navigation.navigate('Profile', { 
+        userId: safePost.userId || safePost.user?.id || safePost.user?._id 
+      });
+    }
+  };
+
   const renderComment = ({ item }) => (
     <View style={styles.commentItem}>
-      <Image 
-        source={{ 
-          uri: item.userAvatar || 'https://randomuser.me/api/portraits/men/32.jpg' 
-        }} 
-        style={styles.commentAvatar} 
+      <UserAvatar
+        uri={item.userAvatar}
+        name={item.userName || 'Anonymous'}
+        size={32}
       />
       <View style={styles.commentContent}>
         <View style={styles.commentHeader}>
@@ -337,11 +371,10 @@ const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData }) => 
         />
 
         <View style={styles.addCommentContainer}>
-          <Image 
-            source={{ 
-              uri: currentUser?.avatar || currentUser?.userAvatar || 'https://randomuser.me/api/portraits/men/32.jpg' 
-            }} 
-            style={styles.addCommentAvatar} 
+          <UserAvatar
+            uri={currentUser?.avatar || currentUser?.userAvatar}
+            name={currentUserName}
+            size={32}
           />
           <TextInput
             style={styles.addCommentInput}
@@ -436,20 +469,21 @@ const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData }) => 
     </Modal>
   );
 
-
-
   return (
     <View style={styles.container}>
       {/* Post Header */}
       <View style={styles.header}>
-        <View style={styles.userInfo}>
-          <Image
-            source={{ 
-              uri: safePost.userAvatar || 'https://randomuser.me/api/portraits/men/32.jpg' 
-            }}
-            style={styles.avatar}
+        <TouchableOpacity 
+          style={styles.userInfo}
+          onPress={handleProfilePress}
+          activeOpacity={0.7}
+        >
+          <UserAvatar
+            uri={safePost.userAvatar}
+            name={safePost.userName || 'Anonymous Chef'}
+            size={40}
           />
-          <View>
+          <View style={styles.userDetails}>
             <Text style={styles.userName}>
               {safePost.userName || 'Anonymous Chef'}
             </Text>
@@ -457,14 +491,12 @@ const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData }) => 
               {formatDate(safePost.createdAt)}
             </Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
         <TouchableOpacity style={styles.moreButton}>
           <Ionicons name="ellipsis-horizontal" size={20} color={COOKSY_COLORS.textLight} />
         </TouchableOpacity>
       </View>
-
-
 
       {/* Recipe Content */}
       <TouchableOpacity onPress={() => setShowFullRecipe(true)}>
@@ -550,7 +582,6 @@ const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData }) => 
   );
 };
 
-// הסטיילים נשארים זהים...
 const styles = StyleSheet.create({
   container: {
     backgroundColor: COOKSY_COLORS.white,
@@ -568,13 +599,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
-    borderWidth: 2,
-    borderColor: COOKSY_COLORS.primary,
+  userDetails: {
+    marginLeft: 12,
   },
   userName: {
     fontSize: 16,
@@ -724,16 +750,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COOKSY_COLORS.border,
   },
-  commentAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginRight: 12,
-    borderWidth: 1,
-    borderColor: COOKSY_COLORS.primary,
-  },
   commentContent: {
     flex: 1,
+    marginLeft: 12,
   },
   commentHeader: {
     flexDirection: 'row',
@@ -784,14 +803,6 @@ const styles = StyleSheet.create({
     borderTopColor: COOKSY_COLORS.border,
     backgroundColor: COOKSY_COLORS.white,
   },
-  addCommentAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginRight: 12,
-    borderWidth: 1,
-    borderColor: COOKSY_COLORS.primary,
-  },
   addCommentInput: {
     flex: 1,
     borderWidth: 1,
@@ -803,9 +814,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     backgroundColor: COOKSY_COLORS.background,
     color: COOKSY_COLORS.text,
+    marginHorizontal: 12,
   },
   addCommentButton: {
-    marginLeft: 8,
     padding: 8,
     backgroundColor: COOKSY_COLORS.background,
     borderRadius: 20,

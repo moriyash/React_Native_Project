@@ -20,6 +20,7 @@ import { recipeService } from '../../../services/recipeService';
 import PostComponent from '../../common/PostComponent';
 import CreatePostComponent from '../../common/CreatePostComponent';
 import SharePostComponent from '../../common/SharePostComponent';
+import UserAvatar from '../../common/UserAvatar';
 
 // צבעי Cooksy
 const COOKSY_COLORS = {
@@ -37,7 +38,7 @@ const COOKSY_COLORS = {
   info: '#3498DB'
 };
 
-const HomeScreen = () => {
+const HomeScreen = ({ navigation }) => {
   const { logout, currentUser, isLoading: authLoading } = useAuth();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -98,34 +99,32 @@ const HomeScreen = () => {
   }, [loadPosts]);
 
   const handleRefreshData = useCallback(async () => {
-  try {
-    const result = await recipeService.getAllRecipes();
-    
-    if (result.success) {
-      const postsArray = Array.isArray(result.data) ? result.data : [];
+    try {
+      const result = await recipeService.getAllRecipes();
       
-      // ✅ פורמט נקי של הפוסטים
-      const formattedPosts = postsArray.map(post => ({
-        ...post,
-        _id: post._id || post.id,
-        userName: post.userName || post.user?.name || post.author?.name || 'Anonymous',
-        userAvatar: post.userAvatar || post.user?.avatar || post.author?.avatar || null,
-        likes: Array.isArray(post.likes) ? post.likes : [],
-        comments: Array.isArray(post.comments) ? post.comments : [],
-        createdAt: post.createdAt || post.created_at || new Date().toISOString(),
-      }));
-      
-      // ✅ מיון לפי תאריך
-      const sortedPosts = formattedPosts.sort((a, b) => 
-        new Date(b.createdAt) - new Date(a.createdAt)
-      );
-      
-      setPosts(sortedPosts);
+      if (result.success) {
+        const postsArray = Array.isArray(result.data) ? result.data : [];
+        
+        const formattedPosts = postsArray.map(post => ({
+          ...post,
+          _id: post._id || post.id,
+          userName: post.userName || post.user?.name || post.author?.name || 'Anonymous',
+          userAvatar: post.userAvatar || post.user?.avatar || post.author?.avatar || null,
+          likes: Array.isArray(post.likes) ? post.likes : [],
+          comments: Array.isArray(post.comments) ? post.comments : [],
+          createdAt: post.createdAt || post.created_at || new Date().toISOString(),
+        }));
+        
+        const sortedPosts = formattedPosts.sort((a, b) => 
+          new Date(b.createdAt) - new Date(a.createdAt)
+        );
+        
+        setPosts(sortedPosts);
+      }
+    } catch (error) {
+      console.error('Refresh error:', error);
     }
-  } catch (error) {
-    console.error('Refresh error:', error);
-  }
-}, []);
+  }, []);
 
   const handleLogout = useCallback(() => {
     Alert.alert(
@@ -147,6 +146,12 @@ const HomeScreen = () => {
       ]
     );
   }, [logout]);
+
+  const handleNavigateToProfile = () => {
+    if (navigation) {
+      navigation.navigate('Profile', { userId: currentUser?.id || currentUser?._id });
+    }
+  };
 
   const handlePostCreated = useCallback((newPost) => {
     handleRefreshData();
@@ -198,9 +203,11 @@ const HomeScreen = () => {
   const renderCreatePost = useCallback(() => (
     <View style={styles.createPostContainer}>
       <View style={styles.createPostHeader}>
-        <Image 
-          source={{ uri: currentUser?.avatar || 'https://randomuser.me/api/portraits/men/32.jpg' }}
-          style={styles.createPostAvatar}
+        <UserAvatar
+          uri={currentUser?.avatar || currentUser?.userAvatar}
+          name={currentUser?.fullName || currentUser?.name}
+          size={40}
+          onPress={handleNavigateToProfile}
         />
         <TouchableOpacity 
           style={styles.createPostInput}
@@ -230,13 +237,14 @@ const HomeScreen = () => {
         </TouchableOpacity>
       </View>
     </View>
-  ), [currentUser]);
+  ), [currentUser, handleNavigateToProfile]);
 
   const renderPost = useCallback(({ item, index }) => {
     return (
       <View style={styles.postContainer}>
         <PostComponent
           post={item || {}}
+          navigation={navigation}
           onDelete={handlePostDelete}
           onShare={() => handleSystemShare(item)}
           onShareCustom={() => handleShare(item)}
@@ -244,7 +252,7 @@ const HomeScreen = () => {
         />
       </View>
     );
-  }, [handlePostDelete, handleSystemShare, handleShare, handleRefreshData]);
+  }, [handlePostDelete, handleSystemShare, handleShare, handleRefreshData, navigation]);
 
   const renderEmptyComponent = useCallback(() => (
     !loading && (
@@ -296,6 +304,19 @@ const HomeScreen = () => {
           <TouchableOpacity style={styles.headerButton}>
             <Ionicons name="notifications-outline" size={24} color={COOKSY_COLORS.accent} />
           </TouchableOpacity>
+          
+          {/* כפתור פרופיל עם UserAvatar */}
+          <TouchableOpacity 
+            style={styles.profileButton} 
+            onPress={handleNavigateToProfile}
+          >
+            <UserAvatar
+              uri={currentUser?.avatar || currentUser?.userAvatar}
+              name={currentUser?.fullName || currentUser?.name}
+              size={32}
+            />
+          </TouchableOpacity>
+          
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={24} color={COOKSY_COLORS.danger} />
           </TouchableOpacity>
@@ -343,7 +364,6 @@ const HomeScreen = () => {
               <View style={styles.modalPlaceholder} />
             </View>
             
-            {/* 🔧 תיקון: העברת currentUser לקומפוננט */}
             <CreatePostComponent
               currentUser={currentUser}
               onPostCreated={(newPost) => {
@@ -412,6 +432,9 @@ const styles = StyleSheet.create({
     backgroundColor: COOKSY_COLORS.background,
     borderRadius: 20,
   },
+  profileButton: {
+    marginLeft: 8,
+  },
   logoutButton: {
     padding: 8,
     marginLeft: 8,
@@ -433,14 +456,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  createPostAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
-    borderWidth: 2,
-    borderColor: COOKSY_COLORS.primary,
-  },
   createPostInput: {
     flex: 1,
     backgroundColor: COOKSY_COLORS.background,
@@ -449,6 +464,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderWidth: 1,
     borderColor: COOKSY_COLORS.border,
+    marginLeft: 12,
   },
   createPostPlaceholder: {
     fontSize: 16,
