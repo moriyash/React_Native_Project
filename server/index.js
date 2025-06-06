@@ -20,6 +20,64 @@ app.use((req, res, next) => {
   next();
 });
 
+// Get user profile
+app.get('/api/user/profile/:userId', async (req, res) => {
+  try {
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { userId } = req.params;
+    
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      user: { 
+        id: user._id, 
+        fullName: user.fullName, 
+        email: user.email, 
+        bio: user.bio,
+        avatar: user.avatar 
+      }
+    });
+    
+  } catch (error) {
+    console.error('Get profile error:', error);
+    res.status(500).json({ message: 'Failed to get profile' });
+  }
+});
+
+// Delete recipe
+app.delete('/api/recipes/:id', async (req, res) => {
+  try {
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    // בדיקת תקינות ID
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid recipe ID' });
+    }
+
+    const deletedRecipe = await Recipe.findByIdAndDelete(req.params.id);
+    if (!deletedRecipe) {
+      return res.status(404).json({ message: 'Recipe not found' });
+    }
+
+    res.json({ message: 'Recipe deleted successfully' });
+  } catch (error) {
+    console.error('Delete recipe error:', error);
+    res.status(500).json({ message: 'Failed to delete recipe' });
+  }
+});
+
 // MongoDB connection - עם טיפול יותר טוב בשגיאות
 if (process.env.MONGODB_URI) {
   mongoose.connect(process.env.MONGODB_URI)
@@ -365,7 +423,165 @@ app.patch('/api/auth/profile', updateUserProfile);
 app.put('/api/auth/update-profile', updateUserProfile);
 app.patch('/api/auth/update-profile', updateUserProfile);
 
-// Get user profile
+// Change password endpoint
+app.put('/api/auth/change-password', async (req, res) => {
+  try {
+    console.log('=== Change Password Debug ===');
+    console.log('Request body:', { userId: req.body.userId, hasCurrentPassword: !!req.body.currentPassword, hasNewPassword: !!req.body.newPassword });
+    
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { userId, currentPassword, newPassword } = req.body;
+    
+    // בדיקת נתונים נדרשים
+    if (!userId || !currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'User ID, current password and new password are required' });
+    }
+
+    // בדיקת תקינות ObjectId
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+
+    // חיפוש המשתמש
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    console.log('Found user:', user.email);
+
+    // בדיקת הסיסמה הנוכחית
+    if (user.password !== currentPassword) {
+      console.log('Current password does not match');
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
+    // בדיקת validation של הסיסמה החדשה (כמו בקומפוננטה)
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z]).{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      return res.status(400).json({ 
+        message: 'Password must contain at least 8 characters, including uppercase and lowercase letters, a number and a special character' 
+      });
+    }
+
+    // עדכון הסיסמה
+    user.password = newPassword;
+    await user.save();
+    
+    console.log('Password updated successfully for user:', user.email);
+
+    res.json({
+      message: 'Password changed successfully'
+    });
+    
+  } catch (error) {
+    console.error('=== CHANGE PASSWORD ERROR ===');
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Full error:', error);
+    
+    res.status(500).json({ message: 'Failed to change password' });
+  }
+});
+
+// Alternative endpoints for password change
+app.patch('/api/auth/change-password', async (req, res) => {
+  // Same logic as PUT endpoint
+  try {
+    console.log('=== Change Password Debug (PATCH) ===');
+    
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { userId, currentPassword, newPassword } = req.body;
+    
+    if (!userId || !currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'User ID, current password and new password are required' });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.password !== currentPassword) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z]).{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      return res.status(400).json({ 
+        message: 'Password must contain at least 8 characters, including uppercase and lowercase letters, a number and a special character' 
+      });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    res.json({
+      message: 'Password changed successfully'
+    });
+    
+  } catch (error) {
+    console.error('Change password error (PATCH):', error);
+    res.status(500).json({ message: 'Failed to change password' });
+  }
+});
+
+app.put('/api/user/change-password', async (req, res) => {
+  // Same logic - third endpoint for compatibility
+  try {
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { userId, currentPassword, newPassword } = req.body;
+    
+    if (!userId || !currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'User ID, current password and new password are required' });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.password !== currentPassword) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z]).{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      return res.status(400).json({ 
+        message: 'Password must contain at least 8 characters, including uppercase and lowercase letters, a number and a special character' 
+      });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    res.json({
+      message: 'Password changed successfully'
+    });
+    
+  } catch (error) {
+    console.error('Change password error (user endpoint):', error);
+    res.status(500).json({ message: 'Failed to change password' });
+  }
+});
+
 app.get('/api/user/profile/:userId', async (req, res) => {
   try {
     if (!isMongoConnected()) {

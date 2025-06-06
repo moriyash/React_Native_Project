@@ -1,93 +1,13 @@
-// services/userService.js
-
-import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const API_BASE_URL = 'http://192.168.1.222:3000/api';
-
-// יצירת instance של axios עם הגדרות בסיסיות
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  timeout: 30000,
-});
-
-// הוספת טוקן לכל בקשה
-api.interceptors.request.use(
-  async (config) => {
-    try {
-      const token = await AsyncStorage.getItem('userToken');
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    } catch (error) {
-      console.log('No token found');
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
+// services/UserService.js
+class UserService {
+  constructor() {
+    this.baseURL = 'http://192.168.1.222:3000/api'; // עדכן לפי הכתובת שלך
   }
-);
 
-// טיפול בשגיאות תגובה
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    console.error('User API Error:', {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data,
-      url: error.config?.url
-    });
-    return Promise.reject(error);
-  }
-);
-
-export const userService = {
-  // עדכון פרטי משתמש - נשתמש ב-auth endpoint
-  updateProfile: async (userData) => {
+  // Upload avatar image
+  async updateAvatar(imageUri) {
     try {
-      console.log('🔄 Updating user profile...');
-      
-      // נשתמש ב-auth/update-profile או נתיב דומה
-      const response = await api.put('/auth/update-profile', userData);
-      console.log('✅ Profile updated successfully:', response.data);
-      
-      return { success: true, data: response.data };
-    } catch (error) {
-      console.error('❌ Update profile error:', error);
-      
-      // אם האנדפוינט לא קיים, ננסה להשתמש בשיטה חלופית
-      if (error.response?.status === 404) {
-        console.log('🔄 Trying alternative endpoint...');
-        try {
-          // ננסה endpoint חלופי
-          const alternativeResponse = await api.patch('/auth/profile', userData);
-          return { success: true, data: alternativeResponse.data };
-        } catch (altError) {
-          return {
-            success: false,
-            message: 'Profile update endpoint not available. Please contact support.'
-          };
-        }
-      }
-      
-      return {
-        success: false,
-        message: error.response?.data?.message || error.message || 'Failed to update profile'
-      };
-    }
-  },
-
-  // עדכון תמונת פרופיל - נתמקד על שיטה פשוטה יותר
-  updateAvatar: async (imageUri) => {
-    try {
-      console.log('📷 Updating profile picture...');
-      
-      // ננסה קודם עם endpoint פשוט
+      console.log('🔄 Uploading avatar...');
       const formData = new FormData();
       formData.append('avatar', {
         uri: imageUri,
@@ -95,151 +15,196 @@ export const userService = {
         name: 'avatar.jpg',
       });
 
-      // ננסה כמה endpoints אפשריים
-      const possibleEndpoints = [
-        '/auth/avatar',
-        '/auth/upload-avatar', 
-        '/user/upload-avatar',
-        '/upload/avatar'
+      // נסה כמה endpoints שונים
+      const endpoints = [
+        '/upload/avatar',
+        '/user/upload-avatar', 
+        '/auth/avatar'
       ];
 
-      for (const endpoint of possibleEndpoints) {
+      for (const endpoint of endpoints) {
         try {
           console.log(`🔄 Trying endpoint: ${endpoint}`);
-          const response = await api.post(endpoint, formData, {
+          
+          const response = await fetch(`${this.baseURL}${endpoint}`, {
+            method: 'POST',
+            body: formData,
             headers: {
               'Content-Type': 'multipart/form-data',
             },
-            timeout: 60000,
           });
 
-          console.log('✅ Avatar updated successfully:', response.data);
-          return { success: true, data: response.data };
-        } catch (endpointError) {
-          if (endpointError.response?.status !== 404) {
-            // אם זה לא 404, זה אומר שהאנדפוינט קיים אבל יש בעיה אחרת
-            throw endpointError;
+          const result = await response.json();
+          
+          if (response.ok && result.success) {
+            console.log('✅ Avatar uploaded successfully via:', endpoint);
+            return {
+              success: true,
+              data: result
+            };
+          } else {
+            console.log(`❌ Endpoint ${endpoint} failed:`, result);
+            continue;
           }
-          // אחרת ממשיכים לאנדפוינט הבא
-          console.log(`❌ Endpoint ${endpoint} not found, trying next...`);
+        } catch (error) {
+          console.log(`❌ Endpoint ${endpoint} error:`, error.message);
+          continue;
         }
       }
 
-      // אם כל האנדפוינטים נכשלו
-      return {
-        success: false,
-        message: 'Avatar upload not supported yet. Profile will be updated without image.'
-      };
-
+      throw new Error('Avatar upload not supported yet. Profile will be updated without image.');
+      
     } catch (error) {
-      console.error('❌ Update avatar error:', error);
+      console.error('❌ Avatar upload error:', error);
       return {
         success: false,
-        message: error.response?.data?.message || error.message || 'Failed to update profile picture'
+        message: error.message
       };
     }
-  },
+  }
 
-  // שינוי סיסמה
-  changePassword: async (passwordData) => {
+  // Update user profile
+  async updateProfile(profileData) {
     try {
-      console.log('🔐 Changing password...');
+      console.log('🔄 Updating profile...');
       
-      // ננסה כמה endpoints אפשריים לשינוי סיסמה
-      const possibleEndpoints = [
-        '/auth/change-password',
-        '/auth/update-password',
-        '/user/password'
+      const endpoints = [
+        { url: '/auth/update-profile', method: 'PUT' },
+        { url: '/auth/profile', method: 'PATCH' },
+        { url: '/user/profile', method: 'PUT' }
       ];
 
-      for (const endpoint of possibleEndpoints) {
+      for (const endpoint of endpoints) {
         try {
-          console.log(`🔄 Trying password endpoint: ${endpoint}`);
-          const response = await api.put(endpoint, {
-            currentPassword: passwordData.currentPassword,
-            newPassword: passwordData.newPassword
+          console.log(`🔄 Trying endpoint: ${endpoint.url}`);
+          
+          const response = await fetch(`${this.baseURL}${endpoint.url}`, {
+            method: endpoint.method,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(profileData),
           });
 
-          console.log('✅ Password changed successfully');
-          return { success: true, data: response.data };
-        } catch (endpointError) {
-          if (endpointError.response?.status !== 404) {
-            throw endpointError;
+          const result = await response.json();
+          
+          if (response.ok) {
+            console.log('✅ Profile updated successfully via:', endpoint.url);
+            return {
+              success: true,
+              data: result
+            };
+          } else {
+            console.log(`❌ Endpoint ${endpoint.url} failed:`, result);
+            continue;
           }
-          console.log(`❌ Endpoint ${endpoint} not found, trying next...`);
+        } catch (error) {
+          console.log(`❌ Endpoint ${endpoint.url} error:`, error.message);
+          continue;
         }
       }
 
+      throw new Error('Profile update endpoint not available. Please contact support.');
+      
+    } catch (error) {
+      console.error('❌ Update profile error:', error);
       return {
         success: false,
-        message: 'Password change feature not available yet. Please contact support.'
+        message: error.message
       };
+    }
+  }
 
+  // Change password
+  async changePassword(passwordData) {
+    try {
+      console.log('🔄 Changing password...');
+      
+      const endpoints = [
+        { url: '/auth/change-password', method: 'PUT' },
+        { url: '/auth/change-password', method: 'PATCH' },
+        { url: '/user/change-password', method: 'PUT' }
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`🔄 Trying password endpoint: ${endpoint.url}`);
+          
+          const response = await fetch(`${this.baseURL}${endpoint.url}`, {
+            method: endpoint.method,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(passwordData),
+          });
+
+          const result = await response.json();
+          
+          if (response.ok) {
+            console.log('✅ Password changed successfully via:', endpoint.url);
+            return {
+              success: true,
+              data: result
+            };
+          } else {
+            console.log(`❌ Password endpoint ${endpoint.url} failed:`, result);
+            
+            // אם זה שגיאת סיסמה שגויה, תזרוק אותה מיד
+            if (response.status === 400 && result.message) {
+              throw new Error(result.message);
+            }
+            continue;
+          }
+        } catch (error) {
+          // אם זה שגיאת validation או סיסמה שגויה, תזרוק מיד
+          if (error.message.includes('password') || error.message.includes('Password')) {
+            throw error;
+          }
+          
+          console.log(`❌ Password endpoint ${endpoint.url} error:`, error.message);
+          continue;
+        }
+      }
+
+      throw new Error('Password change endpoint not available. Please contact support.');
+      
     } catch (error) {
       console.error('❌ Change password error:', error);
       return {
         success: false,
-        message: error.response?.data?.message || error.message || 'Failed to change password'
+        message: error.message
       };
     }
-  },
+  }
 
-  // קבלת פרטי משתמש
-  getUserProfile: async (userId) => {
+  // Get user profile
+  async getUserProfile(userId) {
     try {
-      console.log('👤 Fetching user profile...');
-      
-      // ננסה כמה endpoints אפשריים
-      const possibleEndpoints = [
-        `/auth/user/${userId}`,
-        `/user/${userId}`,
-        `/users/${userId}`,
-        '/auth/me' // עבור המשתמש הנוכחי
-      ];
+      const response = await fetch(`${this.baseURL}/user/profile/${userId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-      for (const endpoint of possibleEndpoints) {
-        try {
-          console.log(`🔄 Trying profile endpoint: ${endpoint}`);
-          const response = await api.get(endpoint);
-          console.log('✅ User profile fetched successfully');
-          return { success: true, data: response.data };
-        } catch (endpointError) {
-          if (endpointError.response?.status !== 404) {
-            throw endpointError;
-          }
-          console.log(`❌ Endpoint ${endpoint} not found, trying next...`);
-        }
+      const result = await response.json();
+      
+      if (response.ok) {
+        return {
+          success: true,
+          data: result.user
+        };
+      } else {
+        throw new Error(result.message || 'Failed to get user profile');
       }
-
-      return {
-        success: false,
-        message: 'User profile endpoint not available.'
-      };
-      
     } catch (error) {
       console.error('❌ Get user profile error:', error);
       return {
         success: false,
-        message: error.response?.data?.message || error.message || 'Failed to fetch user profile'
-      };
-    }
-  },
-
-  // מחיקת חשבון
-  deleteAccount: async () => {
-    try {
-      console.log('🗑️ Deleting user account...');
-      
-      const response = await api.delete('/auth/delete-account');
-      console.log('✅ Account deleted successfully');
-      
-      return { success: true, data: response.data };
-    } catch (error) {
-      console.error('❌ Delete account error:', error);
-      return {
-        success: false,
-        message: error.response?.data?.message || error.message || 'Failed to delete account'
+        message: error.message
       };
     }
   }
-};
+}
+
+export const userService = new UserService();

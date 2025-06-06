@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../../services/AuthContext';
 import UserAvatar from '../../common/UserAvatar';
+import PasswordInput from '../../common/PasswordInput'; // ⬅️ הוספתי את הקומפוננטה
 import { userService } from '../../../services/UserService';
 
 const COOKSY_COLORS = {
@@ -164,8 +165,13 @@ const EditProfileScreen = ({ navigation }) => {
       return;
     }
 
-    if (newPassword.length < 6) {
-      Alert.alert('Validation Error', 'Password must be at least 6 characters long');
+    // הקומפוננטה כבר עושה validation, אבל נוסיף בדיקה נוספת
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z]).{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      Alert.alert(
+        'Invalid Password', 
+        'Password must contain at least 8 characters, including uppercase and lowercase letters, a number and a special character'
+      );
       return;
     }
 
@@ -173,25 +179,37 @@ const EditProfileScreen = ({ navigation }) => {
 
     try {
       const result = await userService.changePassword({
+        userId: currentUser?.id || currentUser?._id, // ⬅️ הוספתי את ה-userId
         currentPassword,
         newPassword
       });
 
       if (result.success) {
-        Alert.alert('Success! 🔐', 'Your password has been changed successfully');
-        setShowPasswordModal(false);
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
+        // עצור את הטעינה לפני הAlert
+        setIsLoading(false);
+        
+        Alert.alert('Success! 🔐', 'Your password has been changed successfully', [
+          {
+            text: 'OK',
+            onPress: () => {
+              setShowPasswordModal(false);
+              setCurrentPassword('');
+              setNewPassword('');
+              setConfirmPassword('');
+            }
+          }
+        ]);
       } else {
         throw new Error(result.message || 'Failed to change password');
       }
     } catch (error) {
+      // עצור את הטעינה לפני הAlert
+      setIsLoading(false);
+      
       console.error('Change password error:', error);
       Alert.alert('Error', error.message || 'Failed to change password');
-    } finally {
-      setIsLoading(false);
     }
+    // הסרתי את finally כי אנחנו עוצרים את הטעינה באופן מפורש
   };
 
   const renderPasswordModal = () => (
@@ -216,37 +234,34 @@ const EditProfileScreen = ({ navigation }) => {
           <View style={styles.modalBody}>
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Current Password</Text>
-              <TextInput
-                style={styles.input}
+              <PasswordInput
                 value={currentPassword}
                 onChangeText={setCurrentPassword}
                 placeholder="Enter current password"
-                placeholderTextColor={COOKSY_COLORS.textLight}
-                secureTextEntry
+                isConfirmation={true} // כדי לא לעשות validation על הסיסמה הישנה
+                style={styles.passwordInputStyle}
               />
             </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>New Password</Text>
-              <TextInput
-                style={styles.input}
+              <PasswordInput
                 value={newPassword}
                 onChangeText={setNewPassword}
                 placeholder="Enter new password"
-                placeholderTextColor={COOKSY_COLORS.textLight}
-                secureTextEntry
+                isConfirmation={false} // כדי לעשות validation
+                style={styles.passwordInputStyle}
               />
             </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Confirm New Password</Text>
-              <TextInput
-                style={styles.input}
+              <PasswordInput
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 placeholder="Confirm new password"
-                placeholderTextColor={COOKSY_COLORS.textLight}
-                secureTextEntry
+                isConfirmation={true} // כדי לא לעשות validation כפול
+                style={styles.passwordInputStyle}
               />
             </View>
 
@@ -618,6 +633,9 @@ const styles = StyleSheet.create({
   },
   modalBody: {
     padding: 20,
+  },
+  passwordInputStyle: {
+    marginBottom: 0, // מאפס את הרווח של הקומפוננטה כדי לא להכפיל
   },
 });
 
