@@ -119,7 +119,8 @@ const ProfileScreen = ({ route, navigation }) => {
   }, [userId]);
 
   const handleEditProfile = () => {
-    Alert.alert('Coming Soon', 'Profile editing feature is coming soon!');
+  // נווט למסך עריכת הפרופיל
+  navigation.navigate('EditProfile');
   };
 
   const handleSettings = () => {

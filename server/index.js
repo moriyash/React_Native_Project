@@ -32,16 +32,18 @@ if (process.env.MONGODB_URI) {
   console.log('MONGODB_URI not found - running without database');
 }
 
-// User schema - עם validation טוב יותר
+// User schema - עם הוספת avatar ו-bio
 const UserSchema = new mongoose.Schema({
   fullName: { type: String, required: true },
   email: { type: String, required: true, unique: true },
-  password: { type: String, required: true }
+  password: { type: String, required: true },
+  bio: { type: String, maxlength: 500 }, // הוספת bio
+  avatar: { type: String, maxlength: 10000000 } // תמיכה בתמונות גדולות (Base64)
 }, { timestamps: true });
 
 const User = mongoose.model('User', UserSchema);
 
-// Recipe schema - עם validation טוב יותר
+// Recipe schema - עם reference למשתמש במקום שכפול נתונים
 const RecipeSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: String,
@@ -52,13 +54,12 @@ const RecipeSchema = new mongoose.Schema({
   prepTime: { type: Number, default: 0 },
   servings: { type: Number, default: 1 },
   image: { type: String, maxlength: 10000000 }, // תמיכה בתמונות גדולות (Base64)
-  userId: String,
-  userName: String,
-  userAvatar: String,
+  userId: { type: String, required: true }, // רק reference למשתמש
+  // הסרתי userName ו-userAvatar - נטען בזמן אמת
   likes: [{ type: String }],
   comments: [{
     userId: String,
-    userName: String,
+    userName: String, // זה נשאר לתגובות כי זה פחות קריטי
     text: String,
     createdAt: { type: Date, default: Date.now }
   }]
@@ -97,7 +98,7 @@ app.post('/api/auth/register', async (req, res) => {
       message: 'User registered successfully',
       data: { 
         token: 'dummy-token-' + user._id,
-        user: { id: user._id, fullName, email }
+        user: { id: user._id, fullName, email, bio: user.bio, avatar: user.avatar }
       }
     });
   } catch (error) {
@@ -131,7 +132,7 @@ app.post('/api/auth/login', async (req, res) => {
       message: 'Login successful',
       data: { 
         token: 'dummy-token-' + user._id,
-        user: { id: user._id, fullName: user.fullName, email: user.email }
+        user: { id: user._id, fullName: user.fullName, email: user.email, bio: user.bio, avatar: user.avatar }
       }
     });
   } catch (error) {
@@ -144,6 +145,260 @@ app.post('/api/auth/forgotpassword', async (req, res) => {
   res.json({ message: 'Password reset instructions sent' });
 });
 
+// Avatar upload endpoint
+app.post('/api/upload/avatar', upload.single('avatar'), async (req, res) => {
+  try {
+    console.log('=== Avatar Upload Debug ===');
+    console.log('MongoDB connected:', isMongoConnected());
+    
+    if (!isMongoConnected()) {
+      console.log('ERROR: Database not available');
+      return res.status(503).json({ error: 'Database not available' });
+    }
+
+    if (!req.file) {
+      console.log('ERROR: No file uploaded');
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    console.log('File details:', {
+      fieldname: req.file.fieldname,
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size
+    });
+
+    // בדיקה שזה קובץ תמונה
+    if (!req.file.mimetype.startsWith('image/')) {
+      console.log('ERROR: File is not an image');
+      return res.status(400).json({ error: 'Only image files are allowed' });
+    }
+
+    // בדיקת גודל תמונה (5MB מקסימום)
+    if (req.file.size > 5 * 1024 * 1024) {
+      console.log('ERROR: File too large');
+      return res.status(413).json({ error: 'Image too large - maximum 5MB allowed' });
+    }
+
+    // המרה ל-Base64 (כמו בפוסטים)
+    const base64Image = req.file.buffer.toString('base64');
+    const imageData = `data:${req.file.mimetype};base64,${base64Image}`;
+    
+    console.log('Avatar converted to base64, length:', imageData.length);
+    
+    // החזרת התמונה כ-Base64 - הלקוח ישמור אותה בפרופיל המשתמש
+    res.json({
+      success: true,
+      url: imageData, // Base64 string לשמירה בפרופיל
+      filename: req.file.originalname
+    });
+    
+  } catch (error) {
+    console.error('=== AVATAR UPLOAD ERROR ===');
+    console.error('Error message:', error.message);
+    console.error('Full error:', error);
+    res.status(500).json({ error: 'Failed to upload avatar' });
+  }
+});
+
+// Alternative avatar upload endpoints (for compatibility)
+app.post('/api/user/upload-avatar', upload.single('avatar'), async (req, res) => {
+  try {
+    console.log('Avatar upload request received (user endpoint)');
+    
+    if (!isMongoConnected()) {
+      return res.status(503).json({ error: 'Database not available' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    if (!req.file.mimetype.startsWith('image/')) {
+      return res.status(400).json({ error: 'Only image files are allowed' });
+    }
+
+    if (req.file.size > 5 * 1024 * 1024) {
+      return res.status(413).json({ error: 'Image too large - maximum 5MB allowed' });
+    }
+
+    const base64Image = req.file.buffer.toString('base64');
+    const imageData = `data:${req.file.mimetype};base64,${base64Image}`;
+    
+    res.json({
+      success: true,
+      url: imageData,
+      filename: req.file.originalname
+    });
+    
+  } catch (error) {
+    console.error('Avatar upload error:', error);
+    res.status(500).json({ error: 'Failed to upload avatar' });
+  }
+});
+
+// Another alternative endpoint
+app.post('/api/auth/avatar', upload.single('avatar'), async (req, res) => {
+  try {
+    console.log('Avatar upload request received (auth endpoint)');
+    
+    if (!isMongoConnected()) {
+      return res.status(503).json({ error: 'Database not available' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    if (!req.file.mimetype.startsWith('image/')) {
+      return res.status(400).json({ error: 'Only image files are allowed' });
+    }
+
+    if (req.file.size > 5 * 1024 * 1024) {
+      return res.status(413).json({ error: 'Image too large - maximum 5MB allowed' });
+    }
+
+    const base64Image = req.file.buffer.toString('base64');
+    const imageData = `data:${req.file.mimetype};base64,${base64Image}`;
+    
+    res.json({
+      success: true,
+      url: imageData,
+      filename: req.file.originalname
+    });
+    
+  } catch (error) {
+    console.error('Avatar upload error:', error);
+    res.status(500).json({ error: 'Failed to upload avatar' });
+  }
+});
+
+// Profile routes - עדכון פרופיל משתמש (מספר endpoints לתאימות)
+
+// Helper function לעדכון פרופיל
+const updateUserProfile = async (req, res) => {
+  try {
+    console.log('=== Profile Update Debug ===');
+    console.log('Request body:', req.body);
+    console.log('MongoDB connected:', isMongoConnected());
+    
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { userId, id, fullName, email, avatar, bio } = req.body;
+    const userIdToUse = userId || id; // נסה שניהם
+    
+    if (!userIdToUse) {
+      console.log('ERROR: No user ID provided');
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    // בדיקת תקינות ObjectId
+    if (!mongoose.Types.ObjectId.isValid(userIdToUse)) {
+      console.log('ERROR: Invalid user ID:', userIdToUse);
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+
+    // חיפוש המשתמש
+    const user = await User.findById(userIdToUse);
+    if (!user) {
+      console.log('ERROR: User not found:', userIdToUse);
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    console.log('Found user:', user.email);
+
+    // עדכון הנתונים
+    if (fullName !== undefined) user.fullName = fullName;
+    if (email !== undefined) user.email = email;
+    if (bio !== undefined) user.bio = bio;
+    if (avatar !== undefined) user.avatar = avatar; // שמירת ה-Base64 של התמונה
+
+    console.log('Updating user profile:', {
+      userId: userIdToUse,
+      fullName,
+      email,
+      bio,
+      hasAvatar: !!avatar,
+      avatarLength: avatar ? avatar.length : 0
+    });
+
+    // שמירה
+    await user.save();
+    
+    console.log('Profile updated successfully');
+
+    res.json({
+      message: 'Profile updated successfully',
+      user: { 
+        id: user._id, 
+        fullName: user.fullName, 
+        email: user.email, 
+        bio: user.bio,
+        avatar: user.avatar 
+      }
+    });
+    
+  } catch (error) {
+    console.error('=== PROFILE UPDATE ERROR ===');
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Full error:', error);
+    
+    if (error.code === 11000) {
+      res.status(400).json({ message: 'Email already exists' });
+    } else if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => err.message);
+      res.status(400).json({ message: 'Validation error', errors: validationErrors });
+    } else {
+      res.status(500).json({ message: 'Failed to update profile' });
+    }
+  }
+};
+
+// Multiple endpoints for profile update (for compatibility)
+app.put('/api/user/profile', updateUserProfile);
+app.patch('/api/user/profile', updateUserProfile);
+app.put('/api/auth/profile', updateUserProfile);
+app.patch('/api/auth/profile', updateUserProfile);
+app.put('/api/auth/update-profile', updateUserProfile);
+app.patch('/api/auth/update-profile', updateUserProfile);
+
+// Get user profile
+app.get('/api/user/profile/:userId', async (req, res) => {
+  try {
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { userId } = req.params;
+    
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      user: { 
+        id: user._id, 
+        fullName: user.fullName, 
+        email: user.email, 
+        bio: user.bio,
+        avatar: user.avatar 
+      }
+    });
+    
+  } catch (error) {
+    console.error('Get profile error:', error);
+    res.status(500).json({ message: 'Failed to get profile' });
+  }
+});
+
 // Recipe routes
 app.get('/api/recipes', async (req, res) => {
   try {
@@ -151,8 +406,23 @@ app.get('/api/recipes', async (req, res) => {
       return res.status(503).json({ message: 'Database not available' });
     }
 
+    // טעינת מתכונים עם נתוני המשתמש
     const recipes = await Recipe.find().sort({ createdAt: -1 });
-    res.json(recipes);
+    
+    // העשרת כל מתכון עם נתוני המשתמש המעודכנים
+    const enrichedRecipes = await Promise.all(
+      recipes.map(async (recipe) => {
+        const user = await User.findById(recipe.userId);
+        return {
+          ...recipe.toObject(),
+          userName: user ? user.fullName : 'Unknown User',
+          userAvatar: user ? user.avatar : null,
+          userBio: user ? user.bio : null
+        };
+      })
+    );
+
+    res.json(enrichedRecipes);
   } catch (error) {
     console.error('Get recipes error:', error);
     res.status(500).json({ message: 'Failed to fetch recipes' });
@@ -225,9 +495,7 @@ app.post('/api/recipes', upload.any(), async (req, res) => {
       prepTime: parseInt(formData.prepTime) || 0,
       servings: parseInt(formData.servings) || 1,
       image: imageData, // התמונה כ-Base64 או null
-      userId: formData.userId || 'anonymous',
-      userName: formData.userName || 'Anonymous Chef',
-      userAvatar: formData.userAvatar || null,
+      userId: formData.userId || 'anonymous', // רק ה-ID, לא שם או תמונה
       likes: [],
       comments: []
     };
@@ -243,7 +511,16 @@ app.post('/api/recipes', upload.any(), async (req, res) => {
     const savedRecipe = await recipe.save();
     console.log('Recipe saved successfully:', savedRecipe._id);
     
-    res.status(201).json(savedRecipe);
+    // החזרת המתכון עם נתוני המשתמש המעודכנים
+    const user = await User.findById(savedRecipe.userId);
+    const enrichedRecipe = {
+      ...savedRecipe.toObject(),
+      userName: user ? user.fullName : 'Unknown User',
+      userAvatar: user ? user.avatar : null,
+      userBio: user ? user.bio : null
+    };
+    
+    res.status(201).json(enrichedRecipe);
   } catch (error) {
     console.error('=== RECIPE CREATION ERROR ===');
     console.error('Error name:', error.name);
@@ -259,6 +536,38 @@ app.post('/api/recipes', upload.any(), async (req, res) => {
     } else {
       res.status(500).json({ message: 'Failed to create recipe' });
     }
+  }
+});
+
+// Get single recipe with user data
+app.get('/api/recipes/:id', async (req, res) => {
+  try {
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid recipe ID' });
+    }
+
+    const recipe = await Recipe.findById(req.params.id);
+    if (!recipe) {
+      return res.status(404).json({ message: 'Recipe not found' });
+    }
+
+    // העשרה עם נתוני המשתמש
+    const user = await User.findById(recipe.userId);
+    const enrichedRecipe = {
+      ...recipe.toObject(),
+      userName: user ? user.fullName : 'Unknown User',
+      userAvatar: user ? user.avatar : null,
+      userBio: user ? user.bio : null
+    };
+
+    res.json(enrichedRecipe);
+  } catch (error) {
+    console.error('Get recipe error:', error);
+    res.status(500).json({ message: 'Failed to fetch recipe' });
   }
 });
 
