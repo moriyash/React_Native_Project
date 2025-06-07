@@ -7,6 +7,7 @@ import CreateGroupComponent from '../components/groups/CreateGroupComponent';
 import GroupsScreen from '../components/screens/Groups/GroupsScreen';
 import GroupDetailsScreen from '../components/screens/Groups/GroupDetailsScreen';
 import EditPostScreen from '../components/screens/posts/EditPostScreen';
+import SearchScreen from '../components/screens/serach/SearchScreen';
 
 const Stack = createStackNavigator(); 
 
@@ -17,6 +18,16 @@ export default function HomeNavigator() {
         name="Home" 
         component={HomeScreen} 
         options={{ headerShown: false }} 
+      />
+      
+      {/* הוספת מסך חיפוש */}
+      <Stack.Screen 
+        name="Search" 
+        component={SearchScreen} 
+        options={{ 
+          headerShown: false,
+          presentation: 'modal'
+        }} 
       />
       
       <Stack.Screen 
@@ -45,7 +56,7 @@ export default function HomeNavigator() {
         }}
       />
 
-      {/* הוספת מסכי קבוצות */}
+      {/* מסכי קבוצות */}
       <Stack.Screen 
         name="Groups" 
         component={GroupsScreen} 

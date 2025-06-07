@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   Image,
   Modal,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../services/AuthContext';
@@ -22,8 +23,8 @@ import CreatePostComponent from '../../common/CreatePostComponent';
 import SharePostComponent from '../../common/SharePostComponent';
 import UserAvatar from '../../common/UserAvatar';
 
-// צבעי Cooksy
-const COOKSY_COLORS = {
+// צבעי FlavorWorld
+const FLAVORWORLD_COLORS = {
   primary: '#F5A623',
   secondary: '#4ECDC4',
   accent: '#1F3A93',
@@ -41,20 +42,107 @@ const COOKSY_COLORS = {
 const HomeScreen = ({ navigation }) => {
   const { logout, currentUser, isLoading: authLoading } = useAuth();
   const [posts, setPosts] = useState([]);
+  const [filteredPosts, setFilteredPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [sharePost, setSharePost] = useState(null);
-  const [showCreateModal, setShowCreateModal] = useState(false); 
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // מיון ומסננים
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedMeatType, setSelectedMeatType] = useState('all');
+  const [selectedCookingTime, setSelectedCookingTime] = useState('all');
+  const [sortBy, setSortBy] = useState('newest'); // newest, oldest, popular
+
+  // קטגוריות זמינות - מהקובץ CreatePostComponent
+  const categories = [
+    'all', 'Asian', 'Italian', 'Mexican', 'Indian', 'Mediterranean', 
+    'American', 'French', 'Chinese', 'Japanese', 'Thai', 
+    'Middle Eastern', 'Greek', 'Spanish', 'Korean', 'Vietnamese'
+  ];
+  
+  const meatTypes = [
+    'all', 'Vegetarian', 'Vegan', 'Chicken', 'Beef', 'Pork', 
+    'Fish', 'Seafood', 'Lamb', 'Turkey', 'Mixed'
+  ];
+  
+  const cookingTimes = [
+    { key: 'all', label: 'All Times' },
+    { key: 'quick', label: 'Under 30 min', max: 30 },
+    { key: 'medium', label: '30-60 min', min: 30, max: 60 },
+    { key: 'long', label: '1-2 hours', min: 60, max: 120 },
+    { key: 'very_long', label: 'Over 2 hours', min: 120 }
+  ];
 
   if (authLoading) {
     return (
       <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={COOKSY_COLORS.primary} />
+        <ActivityIndicator size="large" color={FLAVORWORLD_COLORS.primary} />
         <Text style={styles.loaderText}>Loading...</Text>
       </SafeAreaView>
     );
   } 
+
+  // פונקציה למיון ומסנן
+  const applyFiltersAndSort = useCallback((postsArray) => {
+    let filtered = [...postsArray];
+
+    // מסנן קטגוריה
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter(post => 
+        post.category?.toLowerCase() === selectedCategory.toLowerCase()
+      );
+    }
+
+    // מסנן סוג בשר/מטבח
+    if (selectedMeatType !== 'all') {
+      filtered = filtered.filter(post => 
+        post.meatType?.toLowerCase() === selectedMeatType.toLowerCase()
+      );
+    }
+
+    // מסנן זמן הכנה
+    if (selectedCookingTime !== 'all') {
+      const timeFilter = cookingTimes.find(t => t.key === selectedCookingTime);
+      if (timeFilter) {
+        filtered = filtered.filter(post => {
+          const cookTime = parseInt(post.prepTime) || parseInt(post.preparationTime) || parseInt(post.cookingTime) || 0;
+          if (timeFilter.max && timeFilter.min) {
+            return cookTime >= timeFilter.min && cookTime <= timeFilter.max;
+          } else if (timeFilter.max) {
+            return cookTime <= timeFilter.max;
+          } else if (timeFilter.min) {
+            return cookTime >= timeFilter.min;
+          }
+          return true;
+        });
+      }
+    }
+
+    // מיון
+    switch (sortBy) {
+      case 'oldest':
+        filtered.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        break;
+      case 'popular':
+        filtered.sort((a, b) => (b.likes?.length || 0) - (a.likes?.length || 0));
+        break;
+      case 'newest':
+      default:
+        filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        break;
+    }
+
+    return filtered;
+  }, [selectedCategory, selectedMeatType, selectedCookingTime, sortBy]);
+
+  // עדכון המסנן כאשר משתנים הפרמטרים
+  useEffect(() => {
+    const filtered = applyFiltersAndSort(posts);
+    setFilteredPosts(filtered);
+  }, [posts, applyFiltersAndSort]);
 
   const loadPosts = useCallback(async () => {
     try {
@@ -73,11 +161,7 @@ const HomeScreen = ({ navigation }) => {
           createdAt: post.createdAt || post.created_at || new Date().toISOString(),
         }));
         
-        const sortedPosts = formattedPosts.sort((a, b) => 
-          new Date(b.createdAt) - new Date(a.createdAt)
-        );
-        
-        setPosts(sortedPosts);
+        setPosts(formattedPosts);
       } else {
         Alert.alert('Error', `Failed to load recipes: ${result.message}`);
       }
@@ -115,11 +199,7 @@ const HomeScreen = ({ navigation }) => {
           createdAt: post.createdAt || post.created_at || new Date().toISOString(),
         }));
         
-        const sortedPosts = formattedPosts.sort((a, b) => 
-          new Date(b.createdAt) - new Date(a.createdAt)
-        );
-        
-        setPosts(sortedPosts);
+        setPosts(formattedPosts);
       }
     } catch (error) {
       console.error('Refresh error:', error);
@@ -151,6 +231,29 @@ const HomeScreen = ({ navigation }) => {
     if (navigation) {
       navigation.navigate('Profile', { userId: currentUser?.id || currentUser?._id });
     }
+  };
+
+  const handleNavigateToSearch = () => {
+    if (navigation) {
+      navigation.navigate('Search');
+    }
+  };
+
+  const clearAllFilters = () => {
+    setSelectedCategory('all');
+    setSelectedMeatType('all');
+    setSelectedCookingTime('all');
+    setSortBy('newest');
+    setShowFilters(false);
+  };
+
+  const getActiveFiltersCount = () => {
+    let count = 0;
+    if (selectedCategory !== 'all') count++;
+    if (selectedMeatType !== 'all') count++;
+    if (selectedCookingTime !== 'all') count++;
+    if (sortBy !== 'newest') count++;
+    return count;
   };
 
   const handlePostCreated = useCallback((newPost) => {
@@ -200,6 +303,105 @@ const HomeScreen = ({ navigation }) => {
     handleShareModalClose();
   }, [handleShareModalClose]);
 
+  const renderFilters = () => (
+    showFilters && (
+      <View style={styles.filtersContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {/* מיון */}
+          <View style={styles.filterGroup}>
+            <Text style={styles.filterLabel}>Sort:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {[
+                { key: 'newest', label: 'Newest' },
+                { key: 'oldest', label: 'Oldest' },
+                { key: 'popular', label: 'Popular' }
+              ].map(sort => (
+                <TouchableOpacity
+                  key={sort.key}
+                  style={[styles.filterChip, sortBy === sort.key && styles.activeFilterChip]}
+                  onPress={() => setSortBy(sort.key)}
+                >
+                  <Text style={[styles.filterChipText, sortBy === sort.key && styles.activeFilterChipText]}>
+                    {sort.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* קטגוריות */}
+          <View style={styles.filterGroup}>
+            <Text style={styles.filterLabel}>Category:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {categories.map(category => (
+                <TouchableOpacity
+                  key={category}
+                  style={[styles.filterChip, selectedCategory === category && styles.activeFilterChip]}
+                  onPress={() => setSelectedCategory(category)}
+                >
+                  <Text style={[styles.filterChipText, selectedCategory === category && styles.activeFilterChipText]}>
+                    {category === 'all' ? 'All' : category}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* סוג בשר/מטבח */}
+          <View style={styles.filterGroup}>
+            <Text style={styles.filterLabel}>Type:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {meatTypes.map(meatType => (
+                <TouchableOpacity
+                  key={meatType}
+                  style={[styles.filterChip, selectedMeatType === meatType && styles.activeFilterChip]}
+                  onPress={() => setSelectedMeatType(meatType)}
+                >
+                  <Text style={[styles.filterChipText, selectedMeatType === meatType && styles.activeFilterChipText]}>
+                    {meatType === 'all' ? 'All' : meatType}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* זמן הכנה */}
+          <View style={styles.filterGroup}>
+            <Text style={styles.filterLabel}>Prep Time:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {cookingTimes.map(time => (
+                <TouchableOpacity
+                  key={time.key}
+                  style={[styles.filterChip, selectedCookingTime === time.key && styles.activeFilterChip]}
+                  onPress={() => setSelectedCookingTime(time.key)}
+                >
+                  <Text style={[styles.filterChipText, selectedCookingTime === time.key && styles.activeFilterChipText]}>
+                    {time.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </ScrollView>
+
+        {/* כפתור ניקוי כל המסננים */}
+        {getActiveFiltersCount() > 0 && (
+          <TouchableOpacity style={styles.clearFiltersButton} onPress={clearAllFilters}>
+            <Ionicons name="refresh" size={16} color={FLAVORWORLD_COLORS.white} />
+            <Text style={styles.clearFiltersText}>Clear All Filters</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* תוצאות */}
+        <View style={styles.searchStats}>
+          <Text style={styles.searchStatsText}>
+            {getActiveFiltersCount() > 0 ? `${filteredPosts.length} recipes found` : `${posts.length} total recipes`}
+          </Text>
+        </View>
+      </View>
+    )
+  );
+
   const renderCreatePost = useCallback(() => (
     <View style={styles.createPostContainer}>
       <View style={styles.createPostHeader}>
@@ -224,7 +426,7 @@ const HomeScreen = ({ navigation }) => {
           style={styles.createPostButton}
           onPress={() => setShowCreateModal(true)}
         >
-          <Ionicons name="restaurant-outline" size={20} color={COOKSY_COLORS.primary} />
+          <Ionicons name="restaurant-outline" size={20} color={FLAVORWORLD_COLORS.primary} />
           <Text style={styles.createPostButtonText}>Recipe</Text>
         </TouchableOpacity>
         
@@ -232,7 +434,7 @@ const HomeScreen = ({ navigation }) => {
           style={styles.createPostButton}
           onPress={() => setShowCreateModal(true)}
         >
-          <Ionicons name="camera-outline" size={20} color={COOKSY_COLORS.secondary} />
+          <Ionicons name="camera-outline" size={20} color={FLAVORWORLD_COLORS.secondary} />
           <Text style={styles.createPostButtonText}>Photo</Text>
         </TouchableOpacity>
       </View>
@@ -258,26 +460,37 @@ const HomeScreen = ({ navigation }) => {
     !loading && (
       <View style={styles.emptyContainer}>
         <View style={styles.emptyIcon}>
-          <Ionicons name="restaurant-outline" size={80} color={COOKSY_COLORS.textLight} />
+          <Ionicons 
+            name={getActiveFiltersCount() > 0 ? "options-outline" : "restaurant-outline"} 
+            size={80} 
+            color={FLAVORWORLD_COLORS.textLight} 
+          />
         </View>
-        <Text style={styles.emptyTitle}>No Recipes Yet!</Text>
-        <Text style={styles.emptySubtitle}>
-          Be the first to share your amazing recipe with the Cooksy community
+        <Text style={styles.emptyTitle}>
+          {getActiveFiltersCount() > 0 ? 'No Recipes Found' : 'No Recipes Yet!'}
         </Text>
-        <TouchableOpacity 
-          style={styles.emptyButton}
-          onPress={() => setShowCreateModal(true)}
-        >
-          <Text style={styles.emptyButtonText}>Share Recipe</Text>
-        </TouchableOpacity>
+        <Text style={styles.emptySubtitle}>
+          {getActiveFiltersCount() > 0
+            ? 'No recipes match your filter criteria. Try adjusting your filters.'
+            : 'Be the first to share your amazing recipe with the FlavorWorld community'
+          }
+        </Text>
+        {getActiveFiltersCount() === 0 && (
+          <TouchableOpacity 
+            style={styles.emptyButton}
+            onPress={() => setShowCreateModal(true)}
+          >
+            <Text style={styles.emptyButtonText}>Share Recipe</Text>
+          </TouchableOpacity>
+        )}
       </View>
     )
-  ), [loading]);
+  ), [loading, getActiveFiltersCount]);
 
   const renderLoader = useCallback(() => (
     loading && (
       <View style={styles.loaderContainer}>
-        <ActivityIndicator size="large" color={COOKSY_COLORS.primary} />
+        <ActivityIndicator size="large" color={FLAVORWORLD_COLORS.primary} />
         <Text style={styles.loaderText}>Loading delicious recipes...</Text>
       </View>
     )
@@ -289,20 +502,43 @@ const HomeScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={COOKSY_COLORS.white} />
+      <StatusBar barStyle="dark-content" backgroundColor={FLAVORWORLD_COLORS.white} />
       
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Cooksy</Text>
+        <Text style={styles.headerTitle}>FlavorWorld</Text>
         <View style={styles.headerButtons}>
           <Text style={styles.postsCount}>
-            {posts.length} recipes
+            {filteredPosts.length} recipes
           </Text>
-          <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="search-outline" size={24} color={COOKSY_COLORS.accent} />
+          
+          {/* כפתור חיפוש */}
+          <TouchableOpacity 
+            style={styles.headerButton}
+            onPress={handleNavigateToSearch}
+          >
+            <Ionicons name="search-outline" size={24} color={FLAVORWORLD_COLORS.accent} />
           </TouchableOpacity>
+          
+          {/* כפתור מסננים */}
+          <TouchableOpacity 
+            style={[styles.headerButton, showFilters && styles.activeButton]}
+            onPress={() => setShowFilters(!showFilters)}
+          >
+            <Ionicons 
+              name="options-outline" 
+              size={24} 
+              color={showFilters ? FLAVORWORLD_COLORS.white : FLAVORWORLD_COLORS.accent} 
+            />
+            {getActiveFiltersCount() > 0 && (
+              <View style={styles.filterBadge}>
+                <Text style={styles.filterBadgeText}>{getActiveFiltersCount()}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          
           <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="notifications-outline" size={24} color={COOKSY_COLORS.accent} />
+            <Ionicons name="notifications-outline" size={24} color={FLAVORWORLD_COLORS.accent} />
           </TouchableOpacity>
           
           {/* כפתור פרופיל עם UserAvatar */}
@@ -318,24 +554,27 @@ const HomeScreen = ({ navigation }) => {
           </TouchableOpacity>
           
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={24} color={COOKSY_COLORS.danger} />
+            <Ionicons name="log-out-outline" size={24} color={FLAVORWORLD_COLORS.danger} />
           </TouchableOpacity>
         </View>
       </View>
       
+      {/* מסננים */}
+      {renderFilters()}
+      
       <FlatList
-        data={posts}
+        data={filteredPosts}
         keyExtractor={(item) => item._id || item.id || Math.random().toString()}
         renderItem={renderPost}
-        ListHeaderComponent={renderCreatePost}
+        ListHeaderComponent={!showFilters ? renderCreatePost : null}
         ListEmptyComponent={renderEmptyComponent}
         ItemSeparatorComponent={ItemSeparatorComponent}
         refreshControl={
           <RefreshControl 
             refreshing={refreshing} 
             onRefresh={onRefresh}
-            colors={[COOKSY_COLORS.primary]}
-            tintColor={COOKSY_COLORS.primary}
+            colors={[FLAVORWORLD_COLORS.primary]}
+            tintColor={FLAVORWORLD_COLORS.primary}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -358,7 +597,7 @@ const HomeScreen = ({ navigation }) => {
                 onPress={() => setShowCreateModal(false)}
                 style={styles.modalCloseButton}
               >
-                <Ionicons name="close" size={24} color={COOKSY_COLORS.accent} />
+                <Ionicons name="close" size={24} color={FLAVORWORLD_COLORS.accent} />
               </TouchableOpacity>
               <Text style={styles.modalTitle}>Share Recipe</Text>
               <View style={styles.modalPlaceholder} />
@@ -394,7 +633,7 @@ const HomeScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
   },
   header: {
     flexDirection: 'row',
@@ -402,9 +641,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: COOKSY_COLORS.border,
+    borderBottomColor: FLAVORWORLD_COLORS.border,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -414,7 +653,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: COOKSY_COLORS.accent,
+    color: FLAVORWORLD_COLORS.accent,
   },
   headerButtons: {
     flexDirection: 'row',
@@ -422,15 +661,35 @@ const styles = StyleSheet.create({
   },
   postsCount: {
     fontSize: 12,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     marginRight: 12,
     fontWeight: '500',
   },
   headerButton: {
     padding: 8,
     marginLeft: 8,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 20,
+    position: 'relative',
+  },
+  activeButton: {
+    backgroundColor: FLAVORWORLD_COLORS.primary,
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: FLAVORWORLD_COLORS.danger,
+    borderRadius: 10,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  filterBadgeText: {
+    color: FLAVORWORLD_COLORS.white,
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   profileButton: {
     marginLeft: 8,
@@ -438,11 +697,73 @@ const styles = StyleSheet.create({
   logoutButton: {
     padding: 8,
     marginLeft: 8,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 20,
   },
+  filtersContainer: {
+    backgroundColor: FLAVORWORLD_COLORS.white,
+    borderBottomWidth: 1,
+    borderBottomColor: FLAVORWORLD_COLORS.border,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  filterGroup: {
+    marginBottom: 12,
+  },
+  filterLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: FLAVORWORLD_COLORS.text,
+    marginBottom: 8,
+  },
+  filterChip: {
+    backgroundColor: FLAVORWORLD_COLORS.background,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: FLAVORWORLD_COLORS.border,
+  },
+  activeFilterChip: {
+    backgroundColor: FLAVORWORLD_COLORS.primary,
+    borderColor: FLAVORWORLD_COLORS.primary,
+  },
+  filterChipText: {
+    fontSize: 14,
+    color: FLAVORWORLD_COLORS.text,
+    fontWeight: '500',
+  },
+  activeFilterChipText: {
+    color: FLAVORWORLD_COLORS.white,
+  },
+  clearFiltersButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: FLAVORWORLD_COLORS.danger,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    alignSelf: 'flex-start',
+    marginTop: 8,
+  },
+  clearFiltersText: {
+    color: FLAVORWORLD_COLORS.white,
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  searchStats: {
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  searchStatsText: {
+    fontSize: 12,
+    color: FLAVORWORLD_COLORS.textLight,
+    fontWeight: '500',
+  },
   createPostContainer: {
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     marginBottom: 8,
     padding: 16,
     elevation: 2,
@@ -458,44 +779,44 @@ const styles = StyleSheet.create({
   },
   createPostInput: {
     flex: 1,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: COOKSY_COLORS.border,
+    borderColor: FLAVORWORLD_COLORS.border,
     marginLeft: 12,
   },
   createPostPlaceholder: {
     fontSize: 16,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
   },
   createPostActions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: COOKSY_COLORS.border,
+    borderTopColor: FLAVORWORLD_COLORS.border,
   },
   createPostButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 16,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 15,
     borderWidth: 1,
-    borderColor: COOKSY_COLORS.border,
+    borderColor: FLAVORWORLD_COLORS.border,
   },
   createPostButtonText: {
     fontSize: 14,
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     marginLeft: 6,
     fontWeight: '500',
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     paddingTop: 50,
   },
   modalHeader: {
@@ -505,24 +826,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COOKSY_COLORS.border,
-    backgroundColor: COOKSY_COLORS.white,
+    borderBottomColor: FLAVORWORLD_COLORS.border,
+    backgroundColor: FLAVORWORLD_COLORS.white,
   },
   modalCloseButton: {
     padding: 8,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 20,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
   },
   modalPlaceholder: {
     width: 32,
   },
   postContainer: {
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     marginHorizontal: 0,
     elevation: 1,
     shadowColor: '#000',
@@ -532,7 +853,7 @@ const styles = StyleSheet.create({
   },
   separator: {
     height: 8,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
   },
   emptyContainer: {
     flex: 1,
@@ -548,25 +869,25 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     marginBottom: 12,
     textAlign: 'center',
   },
   emptySubtitle: {
     fontSize: 16,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 24,
   },
   emptyButton: {
-    backgroundColor: COOKSY_COLORS.primary,
+    backgroundColor: FLAVORWORLD_COLORS.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 25,
   },
   emptyButtonText: {
-    color: COOKSY_COLORS.white,
+    color: FLAVORWORLD_COLORS.white,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -584,7 +905,7 @@ const styles = StyleSheet.create({
   loaderText: {
     marginTop: 16,
     fontSize: 16,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     textAlign: 'center',
   },
 });
