@@ -12,8 +12,8 @@ import {
 import { authService } from '../../../services/authService';
 import EmailInput from '../../common/EmailInput';
 
-// צבעי Cooksy
-const COOKSY_COLORS = {
+// צבעי FlavorWorld
+const FLAVORWORLD_COLORS = {
   primary: '#F5A623',
   secondary: '#4ECDC4',
   accent: '#1F3A93',
@@ -63,7 +63,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: COOKSY_COLORS.background }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: FLAVORWORLD_COLORS.background }}>
       <View style={styles.container}>
         <View style={styles.header}>
           <View style={styles.logoContainer}>
@@ -90,7 +90,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
               <EmailInput
                 value={email}
                 onChangeText={handleEmailChange}
-                placeholder="example@cooksy.com"
+                placeholder="example@FlavorWorld.com"
                 style={styles.emailInput}
               />
             </View>
@@ -105,7 +105,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
                 ]}
               >
                 {isLoading ? (
-                  <ActivityIndicator size="small" color={COOKSY_COLORS.white} />
+                  <ActivityIndicator size="small" color={FLAVORWORLD_COLORS.white} />
                 ) : (
                   <Text style={styles.btnText}>Reset Password</Text>
                 )}
@@ -153,19 +153,19 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     flexBasis: 0,
     padding: 24,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
   },
   title: {
     fontSize: 31,
     fontWeight: '700',
-    color: COOKSY_COLORS.accent,
+    color: FLAVORWORLD_COLORS.accent,
     marginBottom: 6,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 15,
     fontWeight: '500',
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     textAlign: 'center',
     paddingHorizontal: 20,
     lineHeight: 22,
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
   logoBackground: {
     width: 100,
     height: 100,
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     borderWidth: 3,
-    borderColor: COOKSY_COLORS.secondary,
+    borderColor: FLAVORWORLD_COLORS.secondary,
   },
   logoText: {
     fontSize: 40,
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
   formLink: {
     fontSize: 16,
     fontWeight: '600',
-    color: COOKSY_COLORS.secondary,
+    color: FLAVORWORLD_COLORS.secondary,
     textAlign: 'center',
   },
   input: {
@@ -217,18 +217,18 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 17,
     fontWeight: '600',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     marginBottom: 8,
   },
   emailInput: {
-    backgroundColor: COOKSY_COLORS.white,
-    borderColor: COOKSY_COLORS.border,
+    backgroundColor: FLAVORWORLD_COLORS.white,
+    borderColor: FLAVORWORLD_COLORS.border,
     borderWidth: 2,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 15,
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
   },
   btn: {
     flexDirection: 'row',
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderWidth: 0,
-    backgroundColor: COOKSY_COLORS.primary,
+    backgroundColor: FLAVORWORLD_COLORS.primary,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   btnDisabled: {
-    backgroundColor: COOKSY_COLORS.textLight,
+    backgroundColor: FLAVORWORLD_COLORS.textLight,
     elevation: 0,
     shadowOpacity: 0,
   },
@@ -254,13 +254,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 26,
     fontWeight: '600',
-    color: COOKSY_COLORS.white,
+    color: FLAVORWORLD_COLORS.white,
   },
   successContainer: {
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     borderRadius: 20,
     padding: 32,
     margin: 16,
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 16,
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     fontWeight: '600',
     lineHeight: 22,
   },
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     marginBottom: 30,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     lineHeight: 20,
   },
 });

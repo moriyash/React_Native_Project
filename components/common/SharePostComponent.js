@@ -13,8 +13,8 @@ import {
   SafeAreaView
 } from 'react-native';
 
-// צבעי Cooksy
-const COOKSY_COLORS = {
+// צבעי FlavorWorld
+const FLAVORWORLD_COLORS = {
   primary: '#F5A623',
   secondary: '#4ECDC4',
   accent: '#1F3A93',
@@ -28,7 +28,7 @@ const COOKSY_COLORS = {
 };
 
 // פתרון פשוט - תחליף לאיקונים ללא ספריות חיצוניות
-const SimpleIcon = ({ type, size = 24, color = COOKSY_COLORS.text }) => {
+const SimpleIcon = ({ type, size = 24, color = FLAVORWORLD_COLORS.text }) => {
   const icons = {
     close: '✕',
     check: '✓',
@@ -161,7 +161,7 @@ const SharePostComponent = ({
         <SimpleIcon 
           type={selectedFriends.includes(item.id) ? "check" : "circle"} 
           size={24} 
-          color={selectedFriends.includes(item.id) ? COOKSY_COLORS.primary : COOKSY_COLORS.border} 
+          color={selectedFriends.includes(item.id) ? FLAVORWORLD_COLORS.primary : FLAVORWORLD_COLORS.border} 
         />
       </View>
     </TouchableOpacity>
@@ -210,7 +210,7 @@ const SharePostComponent = ({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <SimpleIcon type="close" size={24} color={COOKSY_COLORS.accent} />
+            <SimpleIcon type="close" size={24} color={FLAVORWORLD_COLORS.accent} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Share Recipe</Text>
           <TouchableOpacity 
@@ -236,7 +236,7 @@ const SharePostComponent = ({
           <TextInput
             style={styles.messageInput}
             placeholder="Add a personal message with this recipe..."
-            placeholderTextColor={COOKSY_COLORS.textLight}
+            placeholderTextColor={FLAVORWORLD_COLORS.textLight}
             value={message}
             onChangeText={setMessage}
             multiline
@@ -259,11 +259,11 @@ const SharePostComponent = ({
 
           {/* Search Bar */}
           <View style={styles.searchContainer}>
-            <SimpleIcon type="search" size={20} color={COOKSY_COLORS.textLight} />
+            <SimpleIcon type="search" size={20} color={FLAVORWORLD_COLORS.textLight} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search friends..."
-              placeholderTextColor={COOKSY_COLORS.textLight}
+              placeholderTextColor={FLAVORWORLD_COLORS.textLight}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
@@ -271,7 +271,7 @@ const SharePostComponent = ({
 
           {/* Friends List */}
           {loading ? (
-            <ActivityIndicator size="large" color={COOKSY_COLORS.primary} style={styles.loader} />
+            <ActivityIndicator size="large" color={FLAVORWORLD_COLORS.primary} style={styles.loader} />
           ) : (
             <FlatList
               data={filteredFriends}
@@ -309,7 +309,7 @@ const SharePostComponent = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
   },
   header: {
     flexDirection: 'row',
@@ -318,41 +318,41 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: COOKSY_COLORS.border,
-    backgroundColor: COOKSY_COLORS.white,
+    borderBottomColor: FLAVORWORLD_COLORS.border,
+    backgroundColor: FLAVORWORLD_COLORS.white,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
   },
   closeButton: {
     padding: 8,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 20,
   },
   shareButton: {
-    backgroundColor: COOKSY_COLORS.primary,
+    backgroundColor: FLAVORWORLD_COLORS.primary,
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
   },
   shareButtonText: {
-    color: COOKSY_COLORS.white,
+    color: FLAVORWORLD_COLORS.white,
     fontWeight: '600',
     fontSize: 14,
   },
   disabledButton: {
-    backgroundColor: COOKSY_COLORS.border,
+    backgroundColor: FLAVORWORLD_COLORS.border,
   },
   disabledButtonText: {
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
   },
   postPreview: {
     borderBottomWidth: 1,
-    borderBottomColor: COOKSY_COLORS.border,
+    borderBottomColor: FLAVORWORLD_COLORS.border,
     padding: 15,
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
   },
   previewHeader: {
     marginBottom: 10,
@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
   previewTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
   },
   previewContent: {
     flexDirection: 'row',
@@ -378,37 +378,37 @@ const styles = StyleSheet.create({
   previewRecipeTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     marginBottom: 4,
   },
   previewText: {
     fontSize: 14,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     lineHeight: 18,
   },
   messageContainer: {
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: COOKSY_COLORS.border,
-    backgroundColor: COOKSY_COLORS.white,
+    borderBottomColor: FLAVORWORLD_COLORS.border,
+    backgroundColor: FLAVORWORLD_COLORS.white,
   },
   messageInput: {
     fontSize: 15,
     minHeight: 40,
     maxHeight: 80,
     borderWidth: 2,
-    borderColor: COOKSY_COLORS.border,
+    borderColor: FLAVORWORLD_COLORS.border,
     borderRadius: 12,
     paddingHorizontal: 15,
     paddingVertical: 8,
     textAlignVertical: 'top',
-    backgroundColor: COOKSY_COLORS.background,
-    color: COOKSY_COLORS.text,
+    backgroundColor: FLAVORWORLD_COLORS.background,
+    color: FLAVORWORLD_COLORS.text,
   },
   friendsContainer: {
     flex: 1,
     padding: 15,
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
   },
   friendsHeader: {
     flexDirection: 'row',
@@ -419,29 +419,29 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
   },
   selectAllText: {
     fontSize: 14,
-    color: COOKSY_COLORS.secondary,
+    color: FLAVORWORLD_COLORS.secondary,
     fontWeight: '500',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 12,
     paddingHorizontal: 15,
     marginBottom: 15,
     borderWidth: 1,
-    borderColor: COOKSY_COLORS.border,
+    borderColor: FLAVORWORLD_COLORS.border,
   },
   searchInput: {
     flex: 1,
     paddingVertical: 12,
     fontSize: 15,
     marginLeft: 10,
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
   },
   friendItem: {
     flexDirection: 'row',
@@ -449,10 +449,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COOKSY_COLORS.border,
+    borderBottomColor: FLAVORWORLD_COLORS.border,
   },
   selectedFriendItem: {
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 8,
     paddingHorizontal: 8,
   },
@@ -466,12 +466,12 @@ const styles = StyleSheet.create({
     borderRadius: 22.5,
     marginRight: 12,
     borderWidth: 2,
-    borderColor: COOKSY_COLORS.primary,
+    borderColor: FLAVORWORLD_COLORS.primary,
   },
   friendName: {
     fontSize: 15,
     fontWeight: '500',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
   },
   rightSection: {
     flexDirection: 'row',
@@ -481,7 +481,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: COOKSY_COLORS.success,
+    backgroundColor: FLAVORWORLD_COLORS.success,
     marginRight: 10,
   },
   loader: {
@@ -499,14 +499,14 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     textAlign: 'center',
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,
   },
   emptySubText: {
     textAlign: 'center',
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     fontSize: 14,
     lineHeight: 20,
   },
@@ -514,7 +514,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 30,
     alignSelf: 'center',
-    backgroundColor: COOKSY_COLORS.primary,
+    backgroundColor: FLAVORWORLD_COLORS.primary,
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 25,
@@ -525,7 +525,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   counterText: {
-    color: COOKSY_COLORS.white,
+    color: FLAVORWORLD_COLORS.white,
     fontWeight: '600',
     fontSize: 14,
   },

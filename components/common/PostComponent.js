@@ -21,8 +21,8 @@ import { groupService } from '../../services/GroupService';
 import { useAuth } from '../../services/AuthContext';
 import UserAvatar from './UserAvatar';
 
-// צבעי Cooksy
-const COOKSY_COLORS = {
+// צבעי FlavorWorld
+const FLAVORWORLD_COLORS = {
   primary: '#F5A623',
   secondary: '#4ECDC4',
   accent: '#1F3A93',
@@ -72,8 +72,8 @@ const PostComponent = ({
   if (isLoading) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', minHeight: 100 }]}>
-        <ActivityIndicator size="small" color={COOKSY_COLORS.primary} />
-        <Text style={{ marginTop: 8, color: COOKSY_COLORS.textLight }}>Loading...</Text>
+        <ActivityIndicator size="small" color={FLAVORWORLD_COLORS.primary} />
+        <Text style={{ marginTop: 8, color: FLAVORWORLD_COLORS.textLight }}>Loading...</Text>
       </View>
     );
   }
@@ -405,7 +405,7 @@ const PostComponent = ({
               onPress={() => handleDeleteComment(item._id)}
               style={styles.deleteCommentButton}
             >
-              <Ionicons name="trash-outline" size={16} color={COOKSY_COLORS.danger} />
+              <Ionicons name="trash-outline" size={16} color={FLAVORWORLD_COLORS.danger} />
             </TouchableOpacity>
           )}
         </View>
@@ -438,15 +438,15 @@ const PostComponent = ({
         >
           <View style={styles.optionsModal}>
             <TouchableOpacity style={styles.optionItem} onPress={handleEdit}>
-              <Ionicons name="create-outline" size={20} color={COOKSY_COLORS.accent} />
+              <Ionicons name="create-outline" size={20} color={FLAVORWORLD_COLORS.accent} />
               <Text style={styles.optionText}>Edit Recipe</Text>
             </TouchableOpacity>
             
             <View style={styles.optionSeparator} />
             
             <TouchableOpacity style={styles.optionItem} onPress={handleDelete}>
-              <Ionicons name="trash-outline" size={20} color={COOKSY_COLORS.danger} />
-              <Text style={[styles.optionText, { color: COOKSY_COLORS.danger }]}>Delete Recipe</Text>
+              <Ionicons name="trash-outline" size={20} color={FLAVORWORLD_COLORS.danger} />
+              <Text style={[styles.optionText, { color: FLAVORWORLD_COLORS.danger }]}>Delete Recipe</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -469,7 +469,7 @@ const PostComponent = ({
             style={styles.closeButton}
             onPress={() => setShowComments(false)}
           >
-            <Ionicons name="close" size={24} color={COOKSY_COLORS.accent} />
+            <Ionicons name="close" size={24} color={FLAVORWORLD_COLORS.accent} />
           </TouchableOpacity>
           <Text style={styles.commentsTitle}>Comments ({comments.length})</Text>
           <View style={styles.placeholder} />
@@ -497,7 +497,7 @@ const PostComponent = ({
           <TextInput
             style={styles.addCommentInput}
             placeholder="Share your thoughts on this recipe..."
-            placeholderTextColor={COOKSY_COLORS.textLight}
+            placeholderTextColor={FLAVORWORLD_COLORS.textLight}
             value={newComment}
             onChangeText={setNewComment}
             multiline
@@ -512,9 +512,9 @@ const PostComponent = ({
             disabled={!newComment.trim() || isSubmittingComment}
           >
             {isSubmittingComment ? (
-              <ActivityIndicator size="small" color={COOKSY_COLORS.primary} />
+              <ActivityIndicator size="small" color={FLAVORWORLD_COLORS.primary} />
             ) : (
-              <Ionicons name="send" size={20} color={COOKSY_COLORS.primary} />
+              <Ionicons name="send" size={20} color={FLAVORWORLD_COLORS.primary} />
             )}
           </TouchableOpacity>
         </View>
@@ -535,7 +535,7 @@ const PostComponent = ({
             style={styles.fullRecipeCloseButton}
             onPress={() => setShowFullRecipe(false)}
           >
-            <Ionicons name="close" size={28} color={COOKSY_COLORS.accent} />
+            <Ionicons name="close" size={28} color={FLAVORWORLD_COLORS.accent} />
           </TouchableOpacity>
           <Text style={styles.fullRecipeTitle} numberOfLines={2}>
             {safePost.title || 'Untitled Recipe'}
@@ -550,11 +550,11 @@ const PostComponent = ({
           <View style={styles.fullRecipeContent}>
             <View style={styles.recipeMetaRow}>
               <View style={styles.recipeMeta}>
-                <Ionicons name="time-outline" size={16} color={COOKSY_COLORS.primary} />
+                <Ionicons name="time-outline" size={16} color={FLAVORWORLD_COLORS.primary} />
                 <Text style={styles.recipeMetaText}>{formatTime(safePost.prepTime)}</Text>
               </View>
               <View style={styles.recipeMeta}>
-                <Ionicons name="people-outline" size={16} color={COOKSY_COLORS.secondary} />
+                <Ionicons name="people-outline" size={16} color={FLAVORWORLD_COLORS.secondary} />
                 <Text style={styles.recipeMetaText}>{safePost.servings || 0} servings</Text>
               </View>
               <View style={styles.recipeMeta}>
@@ -615,7 +615,7 @@ const PostComponent = ({
           style={styles.moreButton}
           onPress={() => setShowOptionsModal(true)}
         >
-          <Ionicons name="ellipsis-horizontal" size={20} color={COOKSY_COLORS.textLight} />
+          <Ionicons name="ellipsis-horizontal" size={20} color={FLAVORWORLD_COLORS.textLight} />
         </TouchableOpacity>
       </View>
 
@@ -630,13 +630,13 @@ const PostComponent = ({
 
         <View style={styles.recipeInfo}>
           <View style={styles.recipeInfoItem}>
-            <Ionicons name="time-outline" size={16} color={COOKSY_COLORS.primary} />
+            <Ionicons name="time-outline" size={16} color={FLAVORWORLD_COLORS.primary} />
             <Text style={styles.recipeInfoText}>
               {formatTime(safePost.prepTime)}
             </Text>
           </View>
           <View style={styles.recipeInfoItem}>
-            <Ionicons name="people-outline" size={16} color={COOKSY_COLORS.secondary} />
+            <Ionicons name="people-outline" size={16} color={FLAVORWORLD_COLORS.secondary} />
             <Text style={styles.recipeInfoText}>
               {safePost.servings || 0} servings
             </Text>
@@ -664,12 +664,12 @@ const PostComponent = ({
           disabled={isSubmittingLike}
         >
           {isSubmittingLike ? (
-            <ActivityIndicator size="small" color={COOKSY_COLORS.primary} />
+            <ActivityIndicator size="small" color={FLAVORWORLD_COLORS.primary} />
           ) : (
             <Ionicons
               name={isLiked ? "heart" : "heart-outline"}
               size={20}
-              color={isLiked ? COOKSY_COLORS.danger : COOKSY_COLORS.textLight}
+              color={isLiked ? FLAVORWORLD_COLORS.danger : FLAVORWORLD_COLORS.textLight}
             />
           )}
           <Text style={[styles.actionText, isLiked && styles.likedText]}>
@@ -681,12 +681,12 @@ const PostComponent = ({
           style={styles.actionButton}
           onPress={() => setShowComments(true)}
         >
-          <Ionicons name="chatbubble-outline" size={20} color={COOKSY_COLORS.textLight} />
+          <Ionicons name="chatbubble-outline" size={20} color={FLAVORWORLD_COLORS.textLight} />
           <Text style={styles.actionText}>{comments.length}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
-          <Ionicons name="share-outline" size={20} color={COOKSY_COLORS.textLight} />
+          <Ionicons name="share-outline" size={20} color={FLAVORWORLD_COLORS.textLight} />
           <Text style={styles.actionText}>Share</Text>
         </TouchableOpacity>
       </View>
@@ -700,7 +700,7 @@ const PostComponent = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     marginBottom: 8,
     paddingVertical: 12,
   },
@@ -721,28 +721,28 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 16,
     fontWeight: '600',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
   },
   timeStamp: {
     fontSize: 12,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     marginTop: 2,
   },
   moreButton: {
     padding: 8,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 20,
   },
   recipeTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     marginHorizontal: 16,
     marginBottom: 8,
   },
   recipeDescription: {
     fontSize: 14,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     marginHorizontal: 16,
     marginBottom: 12,
     lineHeight: 20,
@@ -762,7 +762,7 @@ const styles = StyleSheet.create({
   },
   recipeInfoText: {
     fontSize: 12,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     marginLeft: 4,
     fontWeight: '500',
   },
@@ -772,8 +772,8 @@ const styles = StyleSheet.create({
   },
   categoryTag: {
     fontSize: 12,
-    color: COOKSY_COLORS.secondary,
-    backgroundColor: COOKSY_COLORS.background,
+    color: FLAVORWORLD_COLORS.secondary,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -782,8 +782,8 @@ const styles = StyleSheet.create({
   },
   meatTypeTag: {
     fontSize: 12,
-    color: COOKSY_COLORS.accent,
-    backgroundColor: COOKSY_COLORS.background,
+    color: FLAVORWORLD_COLORS.accent,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -802,7 +802,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: COOKSY_COLORS.border,
+    borderTopColor: FLAVORWORLD_COLORS.border,
     marginTop: 12,
   },
   actionButton: {
@@ -810,7 +810,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 20,
   },
   actionButtonDisabled: {
@@ -818,12 +818,12 @@ const styles = StyleSheet.create({
   },
   actionText: {
     fontSize: 14,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     marginLeft: 4,
     fontWeight: '500',
   },
   likedText: {
-    color: COOKSY_COLORS.danger,
+    color: FLAVORWORLD_COLORS.danger,
   },
   
   // Options Modal Styles
@@ -834,7 +834,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   optionsModal: {
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     borderRadius: 12,
     paddingVertical: 8,
     minWidth: 160,
@@ -853,19 +853,19 @@ const styles = StyleSheet.create({
   optionText: {
     fontSize: 16,
     fontWeight: '500',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     marginLeft: 12,
   },
   optionSeparator: {
     height: 1,
-    backgroundColor: COOKSY_COLORS.border,
+    backgroundColor: FLAVORWORLD_COLORS.border,
     marginHorizontal: 16,
   },
   
   // Comments Modal Styles
   commentsModalContainer: {
     flex: 1,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     paddingTop: 50,
   },
   commentsHeader: {
@@ -875,17 +875,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COOKSY_COLORS.border,
-    backgroundColor: COOKSY_COLORS.white,
+    borderBottomColor: FLAVORWORLD_COLORS.border,
+    backgroundColor: FLAVORWORLD_COLORS.white,
   },
   commentsTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
   },
   closeButton: {
     padding: 8,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 20,
   },
   placeholder: {
@@ -894,13 +894,13 @@ const styles = StyleSheet.create({
   commentsList: {
     flex: 1,
     paddingHorizontal: 16,
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
   },
   commentItem: {
     flexDirection: 'row',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COOKSY_COLORS.border,
+    borderBottomColor: FLAVORWORLD_COLORS.border,
   },
   commentContent: {
     flex: 1,
@@ -914,22 +914,22 @@ const styles = StyleSheet.create({
   commentUserName: {
     fontSize: 14,
     fontWeight: '600',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     marginRight: 8,
   },
   commentTime: {
     fontSize: 12,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     flex: 1,
   },
   deleteCommentButton: {
     padding: 4,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 12,
   },
   commentText: {
     fontSize: 14,
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     lineHeight: 18,
   },
   emptyComments: {
@@ -938,13 +938,13 @@ const styles = StyleSheet.create({
   },
   emptyCommentsText: {
     fontSize: 16,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     marginBottom: 4,
     fontWeight: '600',
   },
   emptyCommentsSubtext: {
     fontSize: 14,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
   },
   addCommentContainer: {
     flexDirection: 'row',
@@ -952,25 +952,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: COOKSY_COLORS.border,
-    backgroundColor: COOKSY_COLORS.white,
+    borderTopColor: FLAVORWORLD_COLORS.border,
+    backgroundColor: FLAVORWORLD_COLORS.white,
   },
   addCommentInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: COOKSY_COLORS.border,
+    borderColor: FLAVORWORLD_COLORS.border,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
     maxHeight: 100,
     fontSize: 14,
-    backgroundColor: COOKSY_COLORS.background,
-    color: COOKSY_COLORS.text,
+    backgroundColor: FLAVORWORLD_COLORS.background,
+    color: FLAVORWORLD_COLORS.text,
     marginHorizontal: 12,
   },
   addCommentButton: {
     padding: 8,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 20,
   },
   addCommentButtonDisabled: {
@@ -980,7 +980,7 @@ const styles = StyleSheet.create({
   // Full Recipe Modal Styles
   fullRecipeContainer: {
     flex: 1,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     paddingTop: 50,
   },
   fullRecipeHeader: {
@@ -990,22 +990,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COOKSY_COLORS.border,
-    backgroundColor: COOKSY_COLORS.white,
+    borderBottomColor: FLAVORWORLD_COLORS.border,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     position: 'relative',
   },
   fullRecipeCloseButton: {
     position: 'absolute',
     right: 16,
     padding: 8,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 20,
     zIndex: 1,
   },
   fullRecipeTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     textAlign: 'center',
     paddingHorizontal: 60,
   },
@@ -1019,7 +1019,7 @@ const styles = StyleSheet.create({
   },
   fullRecipeContent: {
     padding: 16,
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
   },
   recipeMetaRow: {
     flexDirection: 'row',
@@ -1032,38 +1032,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 16,
     marginBottom: 8,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
   },
   recipeMetaText: {
     fontSize: 14,
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     marginLeft: 4,
     fontWeight: '500',
   },
   fullRecipeDescription: {
     fontSize: 16,
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     lineHeight: 24,
     marginBottom: 20,
   },
   recipeSection: {
     marginBottom: 20,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     padding: 16,
     borderRadius: 12,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     marginBottom: 8,
   },
   sectionContent: {
     fontSize: 16,
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     lineHeight: 24,
   },
 });

@@ -13,8 +13,8 @@ import {
 import { authService } from '../../../services/authService';
 import { useAuth } from '../../../services/AuthContext';
 
-// צבעי Cooksy
-const COOKSY_COLORS = {
+// צבעי FlavorWorld
+const FLAVORWORLD_COLORS = {
   primary: '#F5A623',
   secondary: '#4ECDC4',
   accent: '#1F3A93',
@@ -144,7 +144,7 @@ export default function LoginScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: COOKSY_COLORS.background }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: FLAVORWORLD_COLORS.background }}>
       <View style={styles.container}>
         <View style={styles.header}>
           <View style={styles.logoContainer}>
@@ -154,7 +154,7 @@ export default function LoginScreen({ navigation }) {
           </View>
 
           <Text style={styles.title}>
-            Welcome to <Text style={{ color: COOKSY_COLORS.secondary }}>Cooksy</Text>
+            Welcome to <Text style={{ color: FLAVORWORLD_COLORS.secondary }}>FlavorWorld</Text>
           </Text>
 
           <Text style={styles.subtitle}>
@@ -173,8 +173,8 @@ export default function LoginScreen({ navigation }) {
                 clearButtonMode="while-editing"
                 keyboardType="email-address"
                 onChangeText={handleEmailChange}
-                placeholder="example@cooksy.com"
-                placeholderTextColor={COOKSY_COLORS.textLight}
+                placeholder="example@FlavorWorld.com"
+                placeholderTextColor={FLAVORWORLD_COLORS.textLight}
                 style={[
                   styles.inputControl,
                   emailError ? styles.inputError : null
@@ -195,7 +195,7 @@ export default function LoginScreen({ navigation }) {
                   clearButtonMode="while-editing"
                   onChangeText={handlePasswordChange}
                   placeholder="Enter your password"
-                  placeholderTextColor={COOKSY_COLORS.textLight}
+                  placeholderTextColor={FLAVORWORLD_COLORS.textLight}
                   style={[
                     styles.inputControl,
                     styles.passwordInput,
@@ -228,7 +228,7 @@ export default function LoginScreen({ navigation }) {
               ]}
             >
               {isLoading ? (
-                <ActivityIndicator size="small" color={COOKSY_COLORS.white} />
+                <ActivityIndicator size="small" color={FLAVORWORLD_COLORS.white} />
               ) : (
                 <Text style={styles.btnText}>Sign in</Text>
               )}
@@ -252,7 +252,7 @@ export default function LoginScreen({ navigation }) {
         }}>
         <Text style={styles.formFooter}>
           Don't have an account?{' '}
-          <Text style={{ textDecorationLine: 'underline', color: COOKSY_COLORS.secondary }}>Join Cooksy</Text>
+          <Text style={{ textDecorationLine: 'underline', color: FLAVORWORLD_COLORS.secondary }}>Join FlavorWorld</Text>
         </Text>
       </TouchableOpacity>
     </SafeAreaView>
@@ -265,19 +265,19 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     flexBasis: 0,
     padding: 24,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
   },
   title: {
     fontSize: 31,
     fontWeight: '700',
-    color: COOKSY_COLORS.accent,
+    color: FLAVORWORLD_COLORS.accent,
     marginBottom: 6,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 15,
     fontWeight: '500',
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     textAlign: 'center',
   },
   header: {
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
   logoBackground: {
     width: 100,
     height: 100,
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     borderWidth: 3,
-    borderColor: COOKSY_COLORS.primary,
+    borderColor: FLAVORWORLD_COLORS.primary,
   },
   logoText: {
     fontSize: 40,
@@ -318,21 +318,21 @@ const styles = StyleSheet.create({
   formLink: {
     fontSize: 16,
     fontWeight: '600',
-    color: COOKSY_COLORS.secondary,
+    color: FLAVORWORLD_COLORS.secondary,
     textAlign: 'center',
   },
   formFooter: {
     paddingVertical: 24,
     fontSize: 15,
     fontWeight: '600',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     textAlign: 'center',
     letterSpacing: 0.15,
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     marginHorizontal: -24,
     paddingHorizontal: 24,
     borderTopWidth: 1,
-    borderTopColor: COOKSY_COLORS.border,
+    borderTopColor: FLAVORWORLD_COLORS.border,
   },
   input: {
     marginBottom: 16,
@@ -340,26 +340,26 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 17,
     fontWeight: '600',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     marginBottom: 8,
   },
   inputControl: {
     height: 50,
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     paddingHorizontal: 16,
     borderRadius: 12,
     fontSize: 15,
     fontWeight: '500',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     borderWidth: 2,
-    borderColor: COOKSY_COLORS.border,
+    borderColor: FLAVORWORLD_COLORS.border,
     borderStyle: 'solid',
   },
   inputError: {
-    borderColor: COOKSY_COLORS.danger,
+    borderColor: FLAVORWORLD_COLORS.danger,
   },
   errorText: {
-    color: COOKSY_COLORS.danger,
+    color: FLAVORWORLD_COLORS.danger,
     fontSize: 14,
     marginTop: 5,
     fontWeight: '500',
@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
   visibilityIcon: {
     position: 'absolute',
     right: 16,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 15,
     padding: 8,
   },
@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderWidth: 0,
-    backgroundColor: COOKSY_COLORS.primary,
+    backgroundColor: FLAVORWORLD_COLORS.primary,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   btnDisabled: {
-    backgroundColor: COOKSY_COLORS.textLight,
+    backgroundColor: FLAVORWORLD_COLORS.textLight,
     elevation: 0,
     shadowOpacity: 0,
   },
@@ -406,6 +406,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 26,
     fontWeight: '600',
-    color: COOKSY_COLORS.white,
+    color: FLAVORWORLD_COLORS.white,
   },
 });

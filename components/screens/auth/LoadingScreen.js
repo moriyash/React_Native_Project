@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 
-// צבעי Cooksy
-const COOKSY_COLORS = {
+// צבעי FlavorWorld
+const FLAVORWORLD_COLORS = {
   primary: '#F5A623',
   secondary: '#4ECDC4',
   accent: '#1F3A93',
@@ -19,11 +19,11 @@ const LoadingScreen = () => {
         <View style={styles.logoBackground}>
           <Text style={styles.logoText}>🍳</Text>
         </View>
-        <Text style={styles.appName}>Cooksy</Text>
+        <Text style={styles.appName}>FlavorWorld</Text>
       </View>
       
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COOKSY_COLORS.primary} />
+        <ActivityIndicator size="large" color={FLAVORWORLD_COLORS.primary} />
         <Text style={styles.loadingText}>Loading delicious recipes...</Text>
       </View>
       
@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     paddingHorizontal: 24,
   },
   logoContainer: {
@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
   logoBackground: {
     width: 120,
     height: 120,
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     borderWidth: 4,
-    borderColor: COOKSY_COLORS.primary,
+    borderColor: FLAVORWORLD_COLORS.primary,
     marginBottom: 20,
   },
   logoText: {
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: COOKSY_COLORS.accent,
+    color: FLAVORWORLD_COLORS.accent,
     letterSpacing: 1,
   },
   loadingContainer: {
@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     fontWeight: '500',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     textAlign: 'center',
   },
   footer: {
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     fontWeight: '500',
   },
 });

@@ -3,7 +3,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-const COOKSY_COLORS = {
+const FLAVORWORLD_COLORS = {
   primary: '#F5A623',
   secondary: '#4ECDC4',
   accent: '#1F3A93',
@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: COOKSY_COLORS.primary,
+    borderColor: FLAVORWORLD_COLORS.primary,
   },
   avatarText: {
     fontWeight: '600',

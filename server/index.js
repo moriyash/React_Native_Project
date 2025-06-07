@@ -500,8 +500,7 @@ app.delete('/api/groups/:groupId/posts/:postId/comments/:commentId', async (req,
     if (!isCommentOwner && !isGroupAdmin && !isGroupCreator) {
       return res.status(403).json({ message: 'Permission denied' });
     }
-
-    // מחיקת התגובה
+// מחיקת התגובה
     post.comments.splice(commentIndex, 1);
     await post.save();
 
@@ -993,8 +992,8 @@ const UserSchema = new mongoose.Schema({
   password: { type: String, required: true },
   bio: { type: String, maxlength: 500 },
   avatar: { type: String, maxlength: 10000000 },
-  followers: [{ type: String }], // ⬅️ הוסף את השורה הזאת
-  following: [{ type: String }]  // ⬅️ הוסף את השורה הזאת
+  followers: [{ type: String }],
+  following: [{ type: String }]
 }, { timestamps: true });
 
 const User = mongoose.model('User', UserSchema);
@@ -1050,7 +1049,42 @@ const GroupPostSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const GroupPost = mongoose.model('GroupPost', GroupPostSchema);
+// Private Chat Schema
+const PrivateChatSchema = new mongoose.Schema({
+  participants: [{
+    userId: { type: String, required: true },
+    userName: { type: String, required: true },
+    userAvatar: { type: String },
+    joinedAt: { type: Date, default: Date.now }
+  }],
+  lastMessage: {
+    senderId: String,
+    content: String,
+    createdAt: Date
+  },
+  unreadCount: {
+    type: Map,
+    of: Number,
+    default: {}
+  }
+}, { timestamps: true });
 
+const PrivateChat = mongoose.model('PrivateChat', PrivateChatSchema);
+
+// Message Schema
+const MessageSchema = new mongoose.Schema({
+  chatId: { type: String, required: true },
+  senderId: { type: String, required: true },
+  senderName: { type: String, required: true },
+  content: { type: String, required: true },
+  messageType: { type: String, default: 'text' },
+  readBy: [{
+    userId: String,
+    readAt: { type: Date, default: Date.now }
+  }]
+}, { timestamps: true });
+
+const Message = mongoose.model('Message', MessageSchema);
 // Recipe schema - עם reference למשתמש במקום שכפול נתונים
 const RecipeSchema = new mongoose.Schema({
   title: { type: String, required: true },
@@ -1462,7 +1496,7 @@ app.put('/api/recipes/:id', upload.any(), async (req, res) => {
 
     // טיפול בתמונה חדשה
     let imageData = recipe.image; // שמור את התמונה הקיימת כברירת מחדל
-    
+
     if (req.files && req.files.length > 0) {
       const imageFile = req.files.find(file => 
         file.fieldname === 'image' || 
@@ -1861,7 +1895,7 @@ app.put('/api/user/change-password', async (req, res) => {
   }
 });
 
-app.get('/api/user/profile/:userId', async (req, res) => {
+app.get('/api/user/profile/:userId', async (req, res) => {
   try {
     if (!isMongoConnected()) {
       return res.status(503).json({ message: 'Database not available' });
@@ -1966,7 +2000,7 @@ app.post('/api/recipes', upload.any(), async (req, res) => {
           size: imageFile.size
         });
         
-        // המרה ל-Base64
+// המרה ל-Base64
         const base64Image = imageFile.buffer.toString('base64');
         imageData = `data:${imageFile.mimetype};base64,${base64Image}`;
         console.log('Image converted to base64, length:', imageData.length);
@@ -2066,7 +2100,7 @@ app.get('/api/recipes/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/recipes/:id', async (req, res) => {
+app.delete('/api/recipes/:id', async (req, res) => {
   try {
     if (!isMongoConnected()) {
       return res.status(503).json({ message: 'Database not available' });
@@ -2274,6 +2308,343 @@ process.on('SIGINT', async () => {
   await mongoose.connection.close();
   process.exit(0);
 });
+// ============ PRIVATE CHAT ROUTES ============
+
+// יצירת או קבלת צ'אט פרטי
+app.post('/api/chats/private', async (req, res) => {
+  try {
+    console.log('=== Create/Get Private Chat ===');
+    
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { otherUserId } = req.body;
+    
+    // TODO: בעתיד נוסיף JWT authentication
+    // כרגע נשתמש בפתרון זמני
+    const currentUserId = req.headers['x-user-id'] || 'temp-user-id';
+    
+    if (!otherUserId) {
+      return res.status(400).json({ message: 'Other user ID is required' });
+    }
+
+    if (currentUserId === otherUserId) {
+      return res.status(400).json({ message: 'Cannot chat with yourself' });
+    }
+
+    console.log(`Looking for chat between ${currentUserId} and ${otherUserId}`);
+
+    // חפש צ'אט קיים
+    let chat = await PrivateChat.findOne({
+      'participants.userId': { $all: [currentUserId, otherUserId] }
+    });
+
+    if (!chat) {
+      // קבל פרטי משתמשים
+      const currentUser = await User.findById(currentUserId);
+      const otherUser = await User.findById(otherUserId);
+
+      if (!otherUser) {
+        return res.status(404).json({ message: 'Other user not found' });
+      }
+
+      // צור צ'אט חדש
+      chat = new PrivateChat({
+        participants: [
+          {
+            userId: currentUserId,
+            userName: currentUser ? currentUser.fullName : 'Unknown User',
+            userAvatar: currentUser ? currentUser.avatar : null
+          },
+          {
+            userId: otherUserId,
+            userName: otherUser.fullName,
+            userAvatar: otherUser.avatar
+          }
+        ],
+        unreadCount: new Map([
+          [currentUserId, 0],
+          [otherUserId, 0]
+        ])
+      });
+
+      await chat.save();
+      console.log('New private chat created:', chat._id);
+    } else {
+      console.log('Existing chat found:', chat._id);
+    }
+
+    res.json(chat);
+  } catch (error) {
+    console.error('Create/Get private chat error:', error);
+    res.status(500).json({ message: 'Failed to create/get private chat' });
+  }
+});
+
+// קבלת כל הצ'אטים של המשתמש
+app.get('/api/chats/my', async (req, res) => {
+  try {
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    // TODO: בעתיד נוסיף JWT authentication
+    const currentUserId = req.headers['x-user-id'] || 'temp-user-id';
+    
+    console.log('Fetching chats for user:', currentUserId);
+
+    const chats = await PrivateChat.find({
+      'participants.userId': currentUserId
+    }).sort({ updatedAt: -1 });
+
+    // העשר כל צ'אט עם מידע נוסף
+    const enrichedChats = chats.map(chat => {
+      const otherParticipant = chat.participants.find(p => p.userId !== currentUserId);
+      const unreadCount = chat.unreadCount.get(currentUserId) || 0;
+
+      return {
+        ...chat.toObject(),
+        unreadCount,
+        // הוסף מידע על המשתמש השני ברמה העליונה למען הנוחות
+        otherUser: otherParticipant
+      };
+    });
+
+    console.log(`Found ${enrichedChats.length} chats for user`);
+    res.json(enrichedChats);
+  } catch (error) {
+    console.error('Get my chats error:', error);
+    res.status(500).json({ message: 'Failed to fetch chats' });
+  }
+});
+
+// קבלת הודעות של צ'אט ספציפי
+app.get('/api/chats/:chatId/messages', async (req, res) => {
+  try {
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { chatId } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const skip = (page - 1) * limit;
+
+    if (!mongoose.Types.ObjectId.isValid(chatId)) {
+      return res.status(400).json({ message: 'Invalid chat ID' });
+    }
+
+    console.log(`Fetching messages for chat ${chatId}, page ${page}`);
+
+    const messages = await Message.find({ chatId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    // החזר בסדר הנכון (ישן לחדש)
+    const orderedMessages = messages.reverse();
+    console.log(`Found ${orderedMessages.length} messages`);
+    
+    res.json(orderedMessages);
+  } catch (error) {
+    console.error('Get chat messages error:', error);
+    res.status(500).json({ message: 'Failed to fetch messages' });
+  }
+});
+
+// שליחת הודעה חדשה
+app.post('/api/chats/:chatId/messages', async (req, res) => {
+  try {
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { chatId } = req.params;
+    const { content, messageType = 'text' } = req.body;
+    
+    // TODO: בעתיד נוסיף JWT authentication
+    const currentUserId = req.headers['x-user-id'] || 'temp-user-id';
+
+    if (!content || content.trim() === '') {
+      return res.status(400).json({ message: 'Message content is required' });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(chatId)) {
+      return res.status(400).json({ message: 'Invalid chat ID' });
+    }
+
+    // וודא שהמשתמש חלק מהצ'אט
+    const chat = await PrivateChat.findById(chatId);
+    if (!chat) {
+      return res.status(404).json({ message: 'Chat not found' });
+    }
+
+    const isParticipant = chat.participants.some(p => p.userId === currentUserId);
+    if (!isParticipant) {
+      return res.status(403).json({ message: 'Not authorized to send message to this chat' });
+    }
+
+    // קבל פרטי השולח
+    const sender = await User.findById(currentUserId);
+    const senderName = sender ? sender.fullName : 'Unknown User';
+
+    console.log(`Sending message to chat ${chatId} from ${senderName}`);
+
+    // צור הודעה חדשה
+    const message = new Message({
+      chatId,
+      senderId: currentUserId,
+      senderName,
+      content: content.trim(),
+      messageType,
+      readBy: [{ userId: currentUserId }] // השולח כבר "קרא" את ההודעה
+    });
+
+    await message.save();
+
+    // עדכן את הצ'אט עם ההודעה האחרונה
+    chat.lastMessage = {
+      senderId: currentUserId,
+      content: content.trim(),
+      createdAt: message.createdAt
+    };
+
+    // עדכן מונה הודעות לא נקראו עבור המשתמש השני
+    chat.participants.forEach(participant => {
+      if (participant.userId !== currentUserId) {
+        const currentCount = chat.unreadCount.get(participant.userId) || 0;
+        chat.unreadCount.set(participant.userId, currentCount + 1);
+      }
+    });
+
+    await chat.save();
+
+    console.log('Message sent successfully:', message._id);
+    res.status(201).json(message);
+  } catch (error) {
+    console.error('Send message error:', error);
+    res.status(500).json({ message: 'Failed to send message' });
+  }
+});
+
+// סימון הודעות כנקראו
+app.put('/api/chats/:chatId/read', async (req, res) => {
+  try {
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { chatId } = req.params;
+    // TODO: בעתיד נוסיף JWT authentication
+    const currentUserId = req.headers['x-user-id'] || 'temp-user-id';
+
+    if (!mongoose.Types.ObjectId.isValid(chatId)) {
+      return res.status(400).json({ message: 'Invalid chat ID' });
+    }
+
+    console.log(`Marking messages as read for user ${currentUserId} in chat ${chatId}`);
+
+    // עדכן את מונה ההודעות הלא נקראו בצ'אט
+    const chat = await PrivateChat.findById(chatId);
+    if (chat) {
+      chat.unreadCount.set(currentUserId, 0);
+      await chat.save();
+    }
+
+    // עדכן את ההודעות כנקראו
+    await Message.updateMany(
+      { 
+        chatId, 
+        senderId: { $ne: currentUserId },
+        'readBy.userId': { $ne: currentUserId }
+      },
+      { 
+        $push: { 
+          readBy: { 
+            userId: currentUserId, 
+            readAt: new Date() 
+          } 
+        } 
+      }
+    );
+
+    res.json({ message: 'Messages marked as read' });
+  } catch (error) {
+    console.error('Mark as read error:', error);
+    res.status(500).json({ message: 'Failed to mark as read' });
+  }
+});
+
+// קבלת מספר הודעות לא נקראו
+app.get('/api/chats/unread-count', async (req, res) => {
+  try {
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    // TODO: בעתיד נוסיף JWT authentication
+    const currentUserId = req.headers['x-user-id'] || 'temp-user-id';
+
+    const chats = await PrivateChat.find({
+      'participants.userId': currentUserId
+    });
+
+    let totalUnread = 0;
+    chats.forEach(chat => {
+      totalUnread += chat.unreadCount.get(currentUserId) || 0;
+    });
+
+    console.log(`User ${currentUserId} has ${totalUnread} unread messages`);
+    res.json({ count: totalUnread });
+  } catch (error) {
+    console.error('Get unread count error:', error);
+    res.status(500).json({ count: 0 });
+  }
+});
+
+// חיפוש משתמשים לצ'אט (עבור עתיד)
+app.get('/api/users/search', async (req, res) => {
+  try {
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { q } = req.query;
+    const currentUserId = req.headers['x-user-id'] || 'temp-user-id';
+
+    if (!q || q.trim() === '') {
+      return res.status(400).json({ message: 'Search query is required' });
+    }
+
+    console.log(`Searching users with query: ${q}`);
+
+    const users = await User.find({
+      _id: { $ne: currentUserId }, // אל תכלול את המשתמש הנוכחי
+      $or: [
+        { fullName: { $regex: q, $options: 'i' } },
+        { email: { $regex: q, $options: 'i' } }
+      ]
+    }).limit(20).select('_id fullName email avatar bio');
+
+    const searchResults = users.map(user => ({
+      userId: user._id,
+      userName: user.fullName,
+      userEmail: user.email,
+      userAvatar: user.avatar,
+      userBio: user.bio
+    }));
+
+    console.log(`Found ${searchResults.length} users`);
+    res.json(searchResults);
+  } catch (error) {
+    console.error('Search users error:', error);
+    res.status(500).json({ message: 'Failed to search users' });
+  }
+});
+
+// ============ END CHAT ROUTES ============
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

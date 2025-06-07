@@ -21,7 +21,7 @@ import { userService } from '../../../services/UserService';
 import PostComponent from '../../common/PostComponent';
 import UserAvatar from '../../common/UserAvatar';
 
-const COOKSY_COLORS = {
+const FLAVORWORLD_COLORS = {
   primary: '#F5A623',
   secondary: '#4ECDC4',
   accent: '#1F3A93',
@@ -200,7 +200,7 @@ const SearchScreen = ({ navigation }) => {
         <Text style={styles.userEmail}>{item.email}</Text>
         {item.bio && <Text style={styles.userBio} numberOfLines={1}>{item.bio}</Text>}
       </View>
-      <Ionicons name="chevron-forward" size={20} color={COOKSY_COLORS.textLight} />
+      <Ionicons name="chevron-forward" size={20} color={FLAVORWORLD_COLORS.textLight} />
     </TouchableOpacity>
   );
 
@@ -214,7 +214,7 @@ const SearchScreen = ({ navigation }) => {
           <Image source={{ uri: item.image }} style={styles.groupImage} />
         ) : (
           <View style={styles.placeholderGroupImage}>
-            <Ionicons name="people" size={24} color={COOKSY_COLORS.textLight} />
+            <Ionicons name="people" size={24} color={FLAVORWORLD_COLORS.textLight} />
           </View>
         )}
       </View>
@@ -231,13 +231,13 @@ const SearchScreen = ({ navigation }) => {
           {item.isPrivate && (
             <>
               <Text style={styles.groupMetaText}>•</Text>
-              <Ionicons name="lock-closed" size={12} color={COOKSY_COLORS.textLight} />
+              <Ionicons name="lock-closed" size={12} color={FLAVORWORLD_COLORS.textLight} />
             </>
           )}
         </View>
       </View>
       
-      <Ionicons name="chevron-forward" size={20} color={COOKSY_COLORS.textLight} />
+      <Ionicons name="chevron-forward" size={20} color={FLAVORWORLD_COLORS.textLight} />
     </TouchableOpacity>
   );
 
@@ -250,7 +250,7 @@ const SearchScreen = ({ navigation }) => {
           style={styles.recentItem}
           onPress={() => handleRecentSearch(search)}
         >
-          <Ionicons name="time-outline" size={16} color={COOKSY_COLORS.textLight} />
+          <Ionicons name="time-outline" size={16} color={FLAVORWORLD_COLORS.textLight} />
           <Text style={styles.recentText}>{search}</Text>
         </TouchableOpacity>
       ))}
@@ -302,7 +302,7 @@ const SearchScreen = ({ navigation }) => {
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Ionicons name="search-outline" size={80} color={COOKSY_COLORS.textLight} />
+      <Ionicons name="search-outline" size={80} color={FLAVORWORLD_COLORS.textLight} />
       <Text style={styles.emptyTitle}>
         {searchQuery ? 'No Results Found' : 'Start Searching'}
       </Text>
@@ -323,22 +323,22 @@ const SearchScreen = ({ navigation }) => {
           style={styles.backButton} 
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color={COOKSY_COLORS.accent} />
+          <Ionicons name="arrow-back" size={24} color={FLAVORWORLD_COLORS.accent} />
         </TouchableOpacity>
         
         <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color={COOKSY_COLORS.textLight} />
+          <Ionicons name="search" size={20} color={FLAVORWORLD_COLORS.textLight} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search recipes, users, groups..."
-            placeholderTextColor={COOKSY_COLORS.textLight}
+            placeholderTextColor={FLAVORWORLD_COLORS.textLight}
             value={searchQuery}
             onChangeText={setSearchQuery}
             autoFocus={true}
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={clearSearch}>
-              <Ionicons name="close" size={20} color={COOKSY_COLORS.textLight} />
+              <Ionicons name="close" size={20} color={FLAVORWORLD_COLORS.textLight} />
             </TouchableOpacity>
           )}
         </View>
@@ -356,7 +356,7 @@ const SearchScreen = ({ navigation }) => {
           
           {loading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={COOKSY_COLORS.primary} />
+              <ActivityIndicator size="large" color={FLAVORWORLD_COLORS.primary} />
               <Text style={styles.loadingText}>Searching...</Text>
             </View>
           ) : (
@@ -378,20 +378,20 @@ const SearchScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: COOKSY_COLORS.border,
+    borderBottomColor: FLAVORWORLD_COLORS.border,
   },
   backButton: {
     padding: 8,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 20,
     marginRight: 12,
   },
@@ -399,17 +399,17 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: COOKSY_COLORS.border,
+    borderColor: FLAVORWORLD_COLORS.border,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     marginLeft: 8,
   },
   content: {
@@ -418,9 +418,9 @@ const styles = StyleSheet.create({
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: COOKSY_COLORS.border,
+    borderBottomColor: FLAVORWORLD_COLORS.border,
   },
   tab: {
     flex: 1,
@@ -430,15 +430,15 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   activeTab: {
-    borderBottomColor: COOKSY_COLORS.primary,
+    borderBottomColor: FLAVORWORLD_COLORS.primary,
   },
   tabText: {
     fontSize: 14,
     fontWeight: '500',
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
   },
   activeTabText: {
-    color: COOKSY_COLORS.primary,
+    color: FLAVORWORLD_COLORS.primary,
     fontWeight: '600',
   },
   loadingContainer: {
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
   },
   listContent: {
     flexGrow: 1,
@@ -458,11 +458,11 @@ const styles = StyleSheet.create({
   userItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COOKSY_COLORS.border,
+    borderBottomColor: FLAVORWORLD_COLORS.border,
   },
   userInfo: {
     flex: 1,
@@ -471,26 +471,26 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 16,
     fontWeight: '600',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     marginBottom: 2,
   },
   userEmail: {
     fontSize: 14,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     marginBottom: 2,
   },
   userBio: {
     fontSize: 12,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
   },
   groupItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COOKSY_COLORS.border,
+    borderBottomColor: FLAVORWORLD_COLORS.border,
   },
   groupImageContainer: {
     width: 50,
@@ -506,7 +506,7 @@ const styles = StyleSheet.create({
   placeholderGroupImage: {
     width: '100%',
     height: '100%',
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -517,12 +517,12 @@ const styles = StyleSheet.create({
   groupName: {
     fontSize: 16,
     fontWeight: '600',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     marginBottom: 2,
   },
   groupDescription: {
     fontSize: 14,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     marginBottom: 4,
   },
   groupMeta: {
@@ -531,11 +531,11 @@ const styles = StyleSheet.create({
   },
   groupMetaText: {
     fontSize: 12,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     marginRight: 6,
   },
   recentSearches: {
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     borderRadius: 12,
     padding: 16,
     marginVertical: 16,
@@ -543,7 +543,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     marginBottom: 12,
   },
   recentItem: {
@@ -553,7 +553,7 @@ const styles = StyleSheet.create({
   },
   recentText: {
     fontSize: 16,
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     marginLeft: 8,
   },
   emptyState: {
@@ -566,14 +566,14 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     marginTop: 16,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptySubtitle: {
     fontSize: 16,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     textAlign: 'center',
     lineHeight: 22,
   },

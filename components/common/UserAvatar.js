@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { View, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-const COOKSY_COLORS = {
+const FLAVORWORLD_COLORS = {
   primary: '#F5A623',
   secondary: '#4ECDC4',
   accent: '#1F3A93',
@@ -63,7 +63,7 @@ const UserAvatar = ({
             <Ionicons 
               name="person" 
               size={size * 0.6} 
-              color={COOKSY_COLORS.textLight} 
+              color={FLAVORWORLD_COLORS.textLight} 
             />
           </View>
         </View>
@@ -83,7 +83,7 @@ const UserAvatar = ({
           {showOnlineStatus && (
             <View style={[
               styles.onlineIndicator,
-              { backgroundColor: isOnline ? COOKSY_COLORS.success : COOKSY_COLORS.textLight }
+              { backgroundColor: isOnline ? FLAVORWORLD_COLORS.success : FLAVORWORLD_COLORS.textLight }
             ]} />
           )}
         </View>
@@ -98,7 +98,7 @@ const UserAvatar = ({
         {showOnlineStatus && (
           <View style={[
             styles.onlineIndicator,
-            { backgroundColor: isOnline ? COOKSY_COLORS.success : COOKSY_COLORS.textLight }
+            { backgroundColor: isOnline ? FLAVORWORLD_COLORS.success : FLAVORWORLD_COLORS.textLight }
           ]} />
         )}
       </View>
@@ -115,12 +115,12 @@ const styles = StyleSheet.create({
   },
   image: {
     borderWidth: 2,
-    borderColor: COOKSY_COLORS.primary,
+    borderColor: FLAVORWORLD_COLORS.primary,
   },
   defaultAvatar: {
     backgroundColor: '#D6D8DB',
     borderWidth: 2,
-    borderColor: COOKSY_COLORS.primary,
+    borderColor: FLAVORWORLD_COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: COOKSY_COLORS.white,
+    borderColor: FLAVORWORLD_COLORS.white,
   },
 });
 

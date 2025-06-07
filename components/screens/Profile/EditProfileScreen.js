@@ -20,7 +20,7 @@ import UserAvatar from '../../common/UserAvatar';
 import PasswordInput from '../../common/PasswordInput'; // ⬅️ הוספתי את הקומפוננטה
 import { userService } from '../../../services/UserService';
 
-const COOKSY_COLORS = {
+const FLAVORWORLD_COLORS = {
   primary: '#F5A623',
   secondary: '#4ECDC4',
   accent: '#1F3A93',
@@ -227,7 +227,7 @@ const EditProfileScreen = ({ navigation }) => {
               onPress={() => setShowPasswordModal(false)}
               style={styles.modalCloseButton}
             >
-              <Ionicons name="close" size={24} color={COOKSY_COLORS.accent} />
+              <Ionicons name="close" size={24} color={FLAVORWORLD_COLORS.accent} />
             </TouchableOpacity>
           </View>
 
@@ -271,7 +271,7 @@ const EditProfileScreen = ({ navigation }) => {
               disabled={isLoading}
             >
               {isLoading ? (
-                <ActivityIndicator size="small" color={COOKSY_COLORS.white} />
+                <ActivityIndicator size="small" color={FLAVORWORLD_COLORS.white} />
               ) : (
                 <Text style={styles.saveButtonText}>Change Password</Text>
               )}
@@ -290,7 +290,7 @@ const EditProfileScreen = ({ navigation }) => {
           style={styles.backButton} 
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color={COOKSY_COLORS.accent} />
+          <Ionicons name="arrow-back" size={24} color={FLAVORWORLD_COLORS.accent} />
         </TouchableOpacity>
         
         <Text style={styles.headerTitle}>Edit Profile</Text>
@@ -301,7 +301,7 @@ const EditProfileScreen = ({ navigation }) => {
           disabled={isLoading}
         >
           {isLoading ? (
-            <ActivityIndicator size="small" color={COOKSY_COLORS.primary} />
+            <ActivityIndicator size="small" color={FLAVORWORLD_COLORS.primary} />
           ) : (
             <Text style={styles.saveHeaderButtonText}>Save</Text>
           )}
@@ -320,7 +320,7 @@ const EditProfileScreen = ({ navigation }) => {
             
             {isUploadingAvatar && (
               <View style={styles.uploadingOverlay}>
-                <ActivityIndicator size="large" color={COOKSY_COLORS.primary} />
+                <ActivityIndicator size="large" color={FLAVORWORLD_COLORS.primary} />
               </View>
             )}
           </View>
@@ -330,7 +330,7 @@ const EditProfileScreen = ({ navigation }) => {
             onPress={handlePickImage}
             disabled={isUploadingAvatar}
           >
-            <Ionicons name="camera" size={20} color={COOKSY_COLORS.primary} />
+            <Ionicons name="camera" size={20} color={FLAVORWORLD_COLORS.primary} />
             <Text style={styles.changePhotoText}>Change Photo</Text>
           </TouchableOpacity>
         </View>
@@ -346,7 +346,7 @@ const EditProfileScreen = ({ navigation }) => {
               value={fullName}
               onChangeText={setFullName}
               placeholder="Enter your full name"
-              placeholderTextColor={COOKSY_COLORS.textLight}
+              placeholderTextColor={FLAVORWORLD_COLORS.textLight}
             />
           </View>
 
@@ -357,7 +357,7 @@ const EditProfileScreen = ({ navigation }) => {
               value={currentUser?.email || ''}
               editable={false}
               placeholder="Email address"
-              placeholderTextColor={COOKSY_COLORS.textLight}
+              placeholderTextColor={FLAVORWORLD_COLORS.textLight}
             />
             <Text style={styles.helpText}>Email cannot be changed</Text>
           </View>
@@ -369,7 +369,7 @@ const EditProfileScreen = ({ navigation }) => {
               value={bio}
               onChangeText={setBio}
               placeholder="Tell us about yourself and your cooking passion..."
-              placeholderTextColor={COOKSY_COLORS.textLight}
+              placeholderTextColor={FLAVORWORLD_COLORS.textLight}
               multiline
               numberOfLines={4}
               maxLength={500}
@@ -387,10 +387,10 @@ const EditProfileScreen = ({ navigation }) => {
             onPress={() => setShowPasswordModal(true)}
           >
             <View style={styles.passwordButtonContent}>
-              <Ionicons name="lock-closed-outline" size={20} color={COOKSY_COLORS.accent} />
+              <Ionicons name="lock-closed-outline" size={20} color={FLAVORWORLD_COLORS.accent} />
               <Text style={styles.passwordButtonText}>Change Password</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={COOKSY_COLORS.textLight} />
+            <Ionicons name="chevron-forward" size={20} color={FLAVORWORLD_COLORS.textLight} />
           </TouchableOpacity>
         </View>
 
@@ -402,10 +402,10 @@ const EditProfileScreen = ({ navigation }) => {
             disabled={isLoading}
           >
             {isLoading ? (
-              <ActivityIndicator size="small" color={COOKSY_COLORS.white} />
+              <ActivityIndicator size="small" color={FLAVORWORLD_COLORS.white} />
             ) : (
               <>
-                <Ionicons name="checkmark" size={20} color={COOKSY_COLORS.white} />
+                <Ionicons name="checkmark" size={20} color={FLAVORWORLD_COLORS.white} />
                 <Text style={styles.saveButtonText}>Save Changes</Text>
               </>
             )}
@@ -423,7 +423,7 @@ const EditProfileScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
   },
   header: {
     flexDirection: 'row',
@@ -431,33 +431,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: COOKSY_COLORS.border,
+    borderBottomColor: FLAVORWORLD_COLORS.border,
   },
   backButton: {
     padding: 8,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 20,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
   },
   saveHeaderButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: COOKSY_COLORS.primary,
+    borderColor: FLAVORWORLD_COLORS.primary,
   },
   saveHeaderButtonDisabled: {
     opacity: 0.6,
   },
   saveHeaderButtonText: {
-    color: COOKSY_COLORS.primary,
+    color: FLAVORWORLD_COLORS.primary,
     fontWeight: '600',
   },
   content: {
@@ -466,9 +466,9 @@ const styles = StyleSheet.create({
   avatarSection: {
     alignItems: 'center',
     paddingVertical: 30,
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: COOKSY_COLORS.border,
+    borderBottomColor: FLAVORWORLD_COLORS.border,
   },
   avatarContainer: {
     position: 'relative',
@@ -490,18 +490,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: COOKSY_COLORS.primary,
+    borderColor: FLAVORWORLD_COLORS.primary,
   },
   changePhotoText: {
-    color: COOKSY_COLORS.primary,
+    color: FLAVORWORLD_COLORS.primary,
     fontWeight: '600',
     marginLeft: 8,
   },
   formSection: {
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     marginTop: 16,
     paddingHorizontal: 20,
     paddingVertical: 24,
@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     marginBottom: 20,
   },
   inputGroup: {
@@ -518,21 +518,21 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: '600',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     marginBottom: 8,
   },
   input: {
     borderWidth: 2,
-    borderColor: COOKSY_COLORS.border,
+    borderColor: FLAVORWORLD_COLORS.border,
     borderRadius: 12,
     padding: 12,
     fontSize: 16,
-    backgroundColor: COOKSY_COLORS.white,
-    color: COOKSY_COLORS.text,
+    backgroundColor: FLAVORWORLD_COLORS.white,
+    color: FLAVORWORLD_COLORS.text,
   },
   inputDisabled: {
-    backgroundColor: COOKSY_COLORS.background,
-    color: COOKSY_COLORS.textLight,
+    backgroundColor: FLAVORWORLD_COLORS.background,
+    color: FLAVORWORLD_COLORS.textLight,
   },
   textArea: {
     minHeight: 100,
@@ -540,12 +540,12 @@ const styles = StyleSheet.create({
   },
   helpText: {
     fontSize: 12,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     marginTop: 4,
   },
   characterCount: {
     fontSize: 12,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     textAlign: 'right',
     marginTop: 4,
   },
@@ -555,10 +555,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 16,
     paddingHorizontal: 16,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: COOKSY_COLORS.border,
+    borderColor: FLAVORWORLD_COLORS.border,
   },
   passwordButtonContent: {
     flexDirection: 'row',
@@ -566,7 +566,7 @@ const styles = StyleSheet.create({
   },
   passwordButtonText: {
     fontSize: 16,
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     marginLeft: 12,
     fontWeight: '500',
   },
@@ -578,7 +578,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COOKSY_COLORS.primary,
+    backgroundColor: FLAVORWORLD_COLORS.primary,
     paddingVertical: 16,
     borderRadius: 25,
     elevation: 2,
@@ -588,12 +588,12 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   saveButtonDisabled: {
-    backgroundColor: COOKSY_COLORS.textLight,
+    backgroundColor: FLAVORWORLD_COLORS.textLight,
     elevation: 0,
     shadowOpacity: 0,
   },
   saveButtonText: {
-    color: COOKSY_COLORS.white,
+    color: FLAVORWORLD_COLORS.white,
     fontSize: 18,
     fontWeight: '600',
     marginLeft: 8,
@@ -607,7 +607,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     borderRadius: 20,
     width: '90%',
     maxHeight: '80%',
@@ -619,16 +619,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COOKSY_COLORS.border,
+    borderBottomColor: FLAVORWORLD_COLORS.border,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
   },
   modalCloseButton: {
     padding: 8,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 20,
   },
   modalBody: {

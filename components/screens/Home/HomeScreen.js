@@ -22,8 +22,9 @@ import PostComponent from '../../common/PostComponent';
 import CreatePostComponent from '../../common/CreatePostComponent';
 import SharePostComponent from '../../common/SharePostComponent';
 import UserAvatar from '../../common/UserAvatar';
+import { chatService } from '../../../services/chatServices'; // 馃啎 爪'讗讟
 
-// צבעי FlavorWorld
+// 爪讘注讬 FlavorWorld
 const FLAVORWORLD_COLORS = {
   primary: '#F5A623',
   secondary: '#4ECDC4',
@@ -49,14 +50,15 @@ const HomeScreen = ({ navigation }) => {
   const [sharePost, setSharePost] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [unreadChatCount, setUnreadChatCount] = useState(0); // 馃啎 诪讜谞讛 爪'讗讟
   
-  // מיון ומסננים
+  // 诪讬讜谉 讜诪住谞谞讬诐
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedMeatType, setSelectedMeatType] = useState('all');
   const [selectedCookingTime, setSelectedCookingTime] = useState('all');
   const [sortBy, setSortBy] = useState('newest'); // newest, oldest, popular
 
-  // קטגוריות זמינות - מהקובץ CreatePostComponent
+  // 拽讟讙讜专讬讜转 讝诪讬谞讜转 - 诪讛拽讜讘抓 CreatePostComponent
   const categories = [
     'all', 'Asian', 'Italian', 'Mexican', 'Indian', 'Mediterranean', 
     'American', 'French', 'Chinese', 'Japanese', 'Thai', 
@@ -76,6 +78,31 @@ const HomeScreen = ({ navigation }) => {
     { key: 'very_long', label: 'Over 2 hours', min: 120 }
   ];
 
+  // 馃啎 驻讜谞拽爪讬讜转 爪'讗讟
+  const loadUnreadChatCount = useCallback(async () => {
+    try {
+      const result = await chatService.getUnreadChatsCount();
+      if (result.success) {
+        setUnreadChatCount(result.count);
+      }
+    } catch (error) {
+      console.error('Load unread count error:', error);
+    }
+  }, []);
+
+  const initializeChatService = useCallback(async () => {
+    const userId = currentUser?.id || currentUser?._id;
+    if (userId) {
+      await chatService.initializeSocket(userId);
+      loadUnreadChatCount();
+    }
+  }, [currentUser, loadUnreadChatCount]);
+
+  // 馃啎 驻转讬讞转 诪住讱 讛爪'讗讟讬诐
+  const handleOpenChats = useCallback(() => {
+    navigation.navigate('ChatList');
+  }, [navigation]);
+
   if (authLoading) {
     return (
       <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -85,25 +112,25 @@ const HomeScreen = ({ navigation }) => {
     );
   } 
 
-  // פונקציה למיון ומסנן
+  // 驻讜谞拽爪讬讛 诇诪讬讜谉 讜诪住谞谉
   const applyFiltersAndSort = useCallback((postsArray) => {
     let filtered = [...postsArray];
 
-    // מסנן קטגוריה
+    // 诪住谞谉 拽讟讙讜专讬讛
     if (selectedCategory !== 'all') {
       filtered = filtered.filter(post => 
         post.category?.toLowerCase() === selectedCategory.toLowerCase()
       );
     }
 
-    // מסנן סוג בשר/מטבח
+    // 诪住谞谉 住讜讙 讘砖专/诪讟讘讞
     if (selectedMeatType !== 'all') {
       filtered = filtered.filter(post => 
         post.meatType?.toLowerCase() === selectedMeatType.toLowerCase()
       );
     }
 
-    // מסנן זמן הכנה
+    // 诪住谞谉 讝诪谉 讛讻谞讛
     if (selectedCookingTime !== 'all') {
       const timeFilter = cookingTimes.find(t => t.key === selectedCookingTime);
       if (timeFilter) {
@@ -121,7 +148,7 @@ const HomeScreen = ({ navigation }) => {
       }
     }
 
-    // מיון
+    // 诪讬讜谉
     switch (sortBy) {
       case 'oldest':
         filtered.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
@@ -138,7 +165,7 @@ const HomeScreen = ({ navigation }) => {
     return filtered;
   }, [selectedCategory, selectedMeatType, selectedCookingTime, sortBy]);
 
-  // עדכון המסנן כאשר משתנים הפרמטרים
+  // 注讚讻讜谉 讛诪住谞谉 讻讗砖专 诪砖转谞讬诐 讛驻专诪讟专讬诐
   useEffect(() => {
     const filtered = applyFiltersAndSort(posts);
     setFilteredPosts(filtered);
@@ -177,10 +204,18 @@ const HomeScreen = ({ navigation }) => {
     loadPosts();
   }, [loadPosts]);
 
+  // 馃啎 讗转讞讜诇 爪'讗讟 讘注转 讟注讬谞转 讛拽讜诪驻讜谞谞讟讛
+  useEffect(() => {
+    if (currentUser?.id || currentUser?._id) {
+      initializeChatService();
+    }
+  }, [currentUser, initializeChatService]);
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     loadPosts();
-  }, [loadPosts]);
+    loadUnreadChatCount(); // 馃啎 专注谞谉 讙诐 讗转 诪住驻专 讛讛讜讚注讜转
+  }, [loadPosts, loadUnreadChatCount]);
 
   const handleRefreshData = useCallback(async () => {
     try {
@@ -217,6 +252,8 @@ const HomeScreen = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
+              // 馃啎 谞转拽 讗转 砖讬专讜转 讛爪'讗讟
+              chatService.disconnect();
               await logout();
             } catch (error) {
               Alert.alert('Error', 'Failed to logout');
@@ -307,7 +344,7 @@ const HomeScreen = ({ navigation }) => {
     showFilters && (
       <View style={styles.filtersContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {/* מיון */}
+          {/* 诪讬讜谉 */}
           <View style={styles.filterGroup}>
             <Text style={styles.filterLabel}>Sort:</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -329,7 +366,7 @@ const HomeScreen = ({ navigation }) => {
             </ScrollView>
           </View>
 
-          {/* קטגוריות */}
+          {/* 拽讟讙讜专讬讜转 */}
           <View style={styles.filterGroup}>
             <Text style={styles.filterLabel}>Category:</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -347,7 +384,7 @@ const HomeScreen = ({ navigation }) => {
             </ScrollView>
           </View>
 
-          {/* סוג בשר/מטבח */}
+          {/* 住讜讙 讘砖专/诪讟讘讞 */}
           <View style={styles.filterGroup}>
             <Text style={styles.filterLabel}>Type:</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -365,7 +402,7 @@ const HomeScreen = ({ navigation }) => {
             </ScrollView>
           </View>
 
-          {/* זמן הכנה */}
+          {/* 讝诪谉 讛讻谞讛 */}
           <View style={styles.filterGroup}>
             <Text style={styles.filterLabel}>Prep Time:</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -384,7 +421,7 @@ const HomeScreen = ({ navigation }) => {
           </View>
         </ScrollView>
 
-        {/* כפתור ניקוי כל המסננים */}
+        {/* 讻驻转讜专 谞讬拽讜讬 讻诇 讛诪住谞谞讬诐 */}
         {getActiveFiltersCount() > 0 && (
           <TouchableOpacity style={styles.clearFiltersButton} onPress={clearAllFilters}>
             <Ionicons name="refresh" size={16} color={FLAVORWORLD_COLORS.white} />
@@ -392,7 +429,7 @@ const HomeScreen = ({ navigation }) => {
           </TouchableOpacity>
         )}
 
-        {/* תוצאות */}
+        {/* 转讜爪讗讜转 */}
         <View style={styles.searchStats}>
           <Text style={styles.searchStatsText}>
             {getActiveFiltersCount() > 0 ? `${filteredPosts.length} recipes found` : `${posts.length} total recipes`}
@@ -504,15 +541,11 @@ const HomeScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={FLAVORWORLD_COLORS.white} />
       
-      {/* Header */}
+      {/* Header 注诇讬讜谉 谞拽讬 */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>FlavorWorld</Text>
         <View style={styles.headerButtons}>
-          <Text style={styles.postsCount}>
-            {filteredPosts.length} recipes
-          </Text>
-          
-          {/* כפתור חיפוש */}
+          {/* 讻驻转讜专 讞讬驻讜砖 */}
           <TouchableOpacity 
             style={styles.headerButton}
             onPress={handleNavigateToSearch}
@@ -520,7 +553,7 @@ const HomeScreen = ({ navigation }) => {
             <Ionicons name="search-outline" size={24} color={FLAVORWORLD_COLORS.accent} />
           </TouchableOpacity>
           
-          {/* כפתור מסננים */}
+          {/* 讻驻转讜专 诪住谞谞讬诐 */}
           <TouchableOpacity 
             style={[styles.headerButton, showFilters && styles.activeButton]}
             onPress={() => setShowFilters(!showFilters)}
@@ -537,29 +570,14 @@ const HomeScreen = ({ navigation }) => {
             )}
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="notifications-outline" size={24} color={FLAVORWORLD_COLORS.accent} />
-          </TouchableOpacity>
-          
-          {/* כפתור פרופיל עם UserAvatar */}
-          <TouchableOpacity 
-            style={styles.profileButton} 
-            onPress={handleNavigateToProfile}
-          >
-            <UserAvatar
-              uri={currentUser?.avatar || currentUser?.userAvatar}
-              name={currentUser?.fullName || currentUser?.name}
-              size={32}
-            />
-          </TouchableOpacity>
-          
+          {/* 讻驻转讜专 讬爪讬讗讛 */}
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={24} color={FLAVORWORLD_COLORS.danger} />
           </TouchableOpacity>
         </View>
       </View>
       
-      {/* מסננים */}
+      {/* 诪住谞谞讬诐 */}
       {renderFilters()}
       
       <FlatList
@@ -582,9 +600,54 @@ const HomeScreen = ({ navigation }) => {
         maxToRenderPerBatch={5}
         windowSize={10}
         initialNumToRender={3}
+        style={styles.flatListContainer}
       />
 
-      {/* מודל יצירת פוסט מלא */}
+      {/* Bottom Navigation */}
+      <View style={styles.bottomNavigation}>
+        <TouchableOpacity 
+          style={styles.bottomNavItem}
+          onPress={() => {/* 讛讜住祝 驻讛 诇讜讙讬拽讛 砖诇 讛转专讗讜转 */}}
+        >
+          <View style={styles.bottomNavIcon}>
+            <Ionicons name="notifications-outline" size={24} color={FLAVORWORLD_COLORS.text} />
+          </View>
+          <Text style={styles.bottomNavLabel}>Notification</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.bottomNavItem}
+          onPress={handleNavigateToProfile}
+        >
+          <View style={styles.bottomNavIconProfile}>
+            <UserAvatar
+              uri={currentUser?.avatar || currentUser?.userAvatar}
+              name={currentUser?.fullName || currentUser?.name}
+              size={28}
+            />
+          </View>
+          <Text style={styles.bottomNavLabel}>Profile</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.bottomNavItem}
+          onPress={handleOpenChats}
+        >
+          <View style={styles.bottomNavIconChat}>
+            <Ionicons name="chatbubbles-outline" size={24} color={FLAVORWORLD_COLORS.white} />
+            {unreadChatCount > 0 && (
+              <View style={styles.chatBadge}>
+                <Text style={styles.chatBadgeText}>
+                  {unreadChatCount > 99 ? '99+' : unreadChatCount}
+                </Text>
+              </View>
+            )}
+          </View>
+          <Text style={[styles.bottomNavLabel, styles.bottomNavLabelActive]}>Messages</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* 诪讜讚诇 讬爪讬专转 驻讜住讟 诪诇讗 */}
       {showCreateModal && (
         <Modal
           visible={showCreateModal}
@@ -614,7 +677,7 @@ const HomeScreen = ({ navigation }) => {
         </Modal>
       )}
 
-      {/* מודל שיתוף מותאם אישית */}
+      {/* 诪讜讚诇 砖讬转讜祝 诪讜转讗诐 讗讬砖讬转 */}
       {showShareModal && sharePost && (
         <SharePostComponent
           visible={showShareModal}
@@ -659,12 +722,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  postsCount: {
-    fontSize: 12,
-    color: FLAVORWORLD_COLORS.textLight,
-    marginRight: 12,
-    fontWeight: '500',
-  },
   headerButton: {
     padding: 8,
     marginLeft: 8,
@@ -691,14 +748,88 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
   },
-  profileButton: {
-    marginLeft: 8,
-  },
   logoutButton: {
     padding: 8,
     marginLeft: 8,
     backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 20,
+  },
+  flatListContainer: {
+    flex: 1,
+    marginBottom: 80, // 诪拽讜诐 诇bottom navigation
+  },
+  // Bottom Navigation Styles
+  bottomNavigation: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: FLAVORWORLD_COLORS.white,
+    borderTopWidth: 1,
+    borderTopColor: FLAVORWORLD_COLORS.border,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  bottomNavItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  bottomNavIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: FLAVORWORLD_COLORS.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  bottomNavIconProfile: {
+    marginBottom: 4,
+  },
+  bottomNavIconChat: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: FLAVORWORLD_COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+    position: 'relative',
+  },
+  bottomNavLabel: {
+    fontSize: 12,
+    color: FLAVORWORLD_COLORS.textLight,
+    fontWeight: '500',
+  },
+  bottomNavLabelActive: {
+    color: FLAVORWORLD_COLORS.primary,
+    fontWeight: '600',
+  },
+  chatBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: FLAVORWORLD_COLORS.danger,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  chatBadgeText: {
+    color: FLAVORWORLD_COLORS.white,
+    fontSize: 11,
+    fontWeight: '600',
   },
   filtersContainer: {
     backgroundColor: FLAVORWORLD_COLORS.white,

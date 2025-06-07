@@ -21,7 +21,7 @@ import { groupService } from '../../../services/GroupService';
 import UserAvatar from '../../common/UserAvatar';
 import CreateGroupComponent from '../../groups/CreateGroupComponent';
 
-const COOKSY_COLORS = {
+const FLAVORWORLD_COLORS = {
   primary: '#F5A623',
   secondary: '#4ECDC4',
   accent: '#1F3A93',
@@ -164,7 +164,7 @@ const GroupsScreen = ({ navigation }) => {
             <Image source={{ uri: group.image }} style={styles.groupImage} />
           ) : (
             <View style={styles.placeholderGroupImage}>
-              <Ionicons name="people" size={40} color={COOKSY_COLORS.textLight} />
+              <Ionicons name="people" size={40} color={FLAVORWORLD_COLORS.textLight} />
             </View>
           )}
           
@@ -173,7 +173,7 @@ const GroupsScreen = ({ navigation }) => {
             <Ionicons 
               name={group.isPrivate ? "lock-closed" : "globe"} 
               size={12} 
-              color={COOKSY_COLORS.white} 
+              color={FLAVORWORLD_COLORS.white} 
             />
           </View>
         </View>
@@ -190,12 +190,12 @@ const GroupsScreen = ({ navigation }) => {
           
           <View style={styles.groupStats}>
             <View style={styles.statItem}>
-              <Ionicons name="people-outline" size={14} color={COOKSY_COLORS.textLight} />
+              <Ionicons name="people-outline" size={14} color={FLAVORWORLD_COLORS.textLight} />
               <Text style={styles.statText}>{group.membersCount || 0} members</Text>
             </View>
             
             <View style={styles.statItem}>
-              <Ionicons name="restaurant-outline" size={14} color={COOKSY_COLORS.textLight} />
+              <Ionicons name="restaurant-outline" size={14} color={FLAVORWORLD_COLORS.textLight} />
               <Text style={styles.statText}>{group.postsCount || 0} recipes</Text>
             </View>
           </View>
@@ -220,14 +220,14 @@ const GroupsScreen = ({ navigation }) => {
         <View style={styles.actionButton}>
           {isMember ? (
             <TouchableOpacity style={styles.memberButton}>
-              <Ionicons name="checkmark" size={16} color={COOKSY_COLORS.success} />
+              <Ionicons name="checkmark" size={16} color={FLAVORWORLD_COLORS.success} />
               <Text style={styles.memberButtonText}>
                 {isCreator ? 'Owner' : 'Member'}
               </Text>
             </TouchableOpacity>
           ) : hasPendingRequest ? (
             <TouchableOpacity style={styles.pendingButton}>
-              <Ionicons name="time" size={16} color={COOKSY_COLORS.primary} />
+              <Ionicons name="time" size={16} color={FLAVORWORLD_COLORS.primary} />
               <Text style={styles.pendingButtonText}>Pending</Text>
             </TouchableOpacity>
           ) : (
@@ -235,7 +235,7 @@ const GroupsScreen = ({ navigation }) => {
               style={styles.joinButton}
               onPress={() => handleJoinGroup(group)}
             >
-              <Ionicons name="add" size={16} color={COOKSY_COLORS.white} />
+              <Ionicons name="add" size={16} color={FLAVORWORLD_COLORS.white} />
               <Text style={styles.joinButtonText}>Join</Text>
             </TouchableOpacity>
           )}
@@ -246,7 +246,7 @@ const GroupsScreen = ({ navigation }) => {
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Ionicons name="people-outline" size={80} color={COOKSY_COLORS.textLight} />
+      <Ionicons name="people-outline" size={80} color={FLAVORWORLD_COLORS.textLight} />
       <Text style={styles.emptyTitle}>
         {selectedTab === 'my' ? 'No Groups Yet' : 'No Groups Found'}
       </Text>
@@ -268,17 +268,17 @@ const GroupsScreen = ({ navigation }) => {
     <View style={styles.headerContent}>
       {/* חיפוש */}
       <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color={COOKSY_COLORS.textLight} />
+        <Ionicons name="search" size={20} color={FLAVORWORLD_COLORS.textLight} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search groups..."
-          placeholderTextColor={COOKSY_COLORS.textLight}
+          placeholderTextColor={FLAVORWORLD_COLORS.textLight}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <Ionicons name="close" size={20} color={COOKSY_COLORS.textLight} />
+            <Ionicons name="close" size={20} color={FLAVORWORLD_COLORS.textLight} />
           </TouchableOpacity>
         )}
       </View>
@@ -310,7 +310,7 @@ const GroupsScreen = ({ navigation }) => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COOKSY_COLORS.primary} />
+          <ActivityIndicator size="large" color={FLAVORWORLD_COLORS.primary} />
           <Text style={styles.loadingText}>Loading groups...</Text>
         </View>
       </SafeAreaView>
@@ -325,7 +325,7 @@ const GroupsScreen = ({ navigation }) => {
           style={styles.backButton} 
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color={COOKSY_COLORS.accent} />
+          <Ionicons name="arrow-back" size={24} color={FLAVORWORLD_COLORS.accent} />
         </TouchableOpacity>
         
         <Text style={styles.headerTitle}>Groups</Text>
@@ -334,7 +334,7 @@ const GroupsScreen = ({ navigation }) => {
           style={styles.createButton}
           onPress={handleCreateGroup}
         >
-          <Ionicons name="add" size={24} color={COOKSY_COLORS.primary} />
+          <Ionicons name="add" size={24} color={FLAVORWORLD_COLORS.primary} />
         </TouchableOpacity>
       </View>
 
@@ -373,7 +373,7 @@ const GroupsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
   },
   header: {
     flexDirection: 'row',
@@ -381,23 +381,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: COOKSY_COLORS.border,
+    borderBottomColor: FLAVORWORLD_COLORS.border,
   },
   backButton: {
     padding: 8,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 20,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
   },
   createButton: {
     padding: 8,
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 20,
   },
   loadingContainer: {
@@ -408,19 +408,19 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
   },
   headerContent: {
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     paddingHorizontal: 16,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COOKSY_COLORS.border,
+    borderBottomColor: FLAVORWORLD_COLORS.border,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -429,12 +429,12 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     marginLeft: 8,
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 12,
     padding: 4,
   },
@@ -446,7 +446,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   activeTab: {
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -456,10 +456,10 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 14,
     fontWeight: '500',
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
   },
   activeTabText: {
-    color: COOKSY_COLORS.primary,
+    color: FLAVORWORLD_COLORS.primary,
     fontWeight: '600',
   },
   listContainer: {
@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   groupCard: {
-    backgroundColor: COOKSY_COLORS.white,
+    backgroundColor: FLAVORWORLD_COLORS.white,
     borderRadius: 16,
     marginBottom: 16,
     elevation: 2,
@@ -492,7 +492,7 @@ const styles = StyleSheet.create({
   placeholderGroupImage: {
     width: '100%',
     height: '100%',
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -500,12 +500,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: COOKSY_COLORS.secondary,
+    backgroundColor: FLAVORWORLD_COLORS.secondary,
     borderRadius: 12,
     padding: 4,
   },
   privateBadge: {
-    backgroundColor: COOKSY_COLORS.accent,
+    backgroundColor: FLAVORWORLD_COLORS.accent,
   },
   groupInfo: {
     padding: 12,
@@ -513,12 +513,12 @@ const styles = StyleSheet.create({
   groupName: {
     fontSize: 16,
     fontWeight: '600',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     marginBottom: 4,
   },
   groupDescription: {
     fontSize: 12,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     lineHeight: 16,
     marginBottom: 8,
   },
@@ -533,7 +533,7 @@ const styles = StyleSheet.create({
   },
   statText: {
     fontSize: 10,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     marginLeft: 4,
   },
   groupMeta: {
@@ -543,14 +543,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   categoryTag: {
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 8,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
   categoryText: {
     fontSize: 10,
-    color: COOKSY_COLORS.secondary,
+    color: FLAVORWORLD_COLORS.secondary,
     fontWeight: '600',
   },
   creatorInfo: {
@@ -559,7 +559,7 @@ const styles = StyleSheet.create({
   },
   creatorText: {
     fontSize: 10,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     marginLeft: 4,
   },
   actionButton: {
@@ -570,12 +570,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COOKSY_COLORS.primary,
+    backgroundColor: FLAVORWORLD_COLORS.primary,
     borderRadius: 12,
     paddingVertical: 8,
   },
   joinButtonText: {
-    color: COOKSY_COLORS.white,
+    color: FLAVORWORLD_COLORS.white,
     fontSize: 12,
     fontWeight: '600',
     marginLeft: 4,
@@ -584,14 +584,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 12,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: COOKSY_COLORS.success,
+    borderColor: FLAVORWORLD_COLORS.success,
   },
   memberButtonText: {
-    color: COOKSY_COLORS.success,
+    color: FLAVORWORLD_COLORS.success,
     fontSize: 12,
     fontWeight: '600',
     marginLeft: 4,
@@ -600,14 +600,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COOKSY_COLORS.background,
+    backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 12,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: COOKSY_COLORS.primary,
+    borderColor: FLAVORWORLD_COLORS.primary,
   },
   pendingButtonText: {
-    color: COOKSY_COLORS.primary,
+    color: FLAVORWORLD_COLORS.primary,
     fontSize: 12,
     fontWeight: '600',
     marginLeft: 4,
@@ -620,26 +620,26 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: COOKSY_COLORS.text,
+    color: FLAVORWORLD_COLORS.text,
     marginTop: 16,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptySubtitle: {
     fontSize: 16,
-    color: COOKSY_COLORS.textLight,
+    color: FLAVORWORLD_COLORS.textLight,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 24,
   },
   createGroupButton: {
-    backgroundColor: COOKSY_COLORS.primary,
+    backgroundColor: FLAVORWORLD_COLORS.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 25,
   },
   createGroupButtonText: {
-    color: COOKSY_COLORS.white,
+    color: FLAVORWORLD_COLORS.white,
     fontSize: 16,
     fontWeight: '600',
   },

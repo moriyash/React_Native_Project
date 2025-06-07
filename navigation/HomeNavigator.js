@@ -8,6 +8,8 @@ import GroupsScreen from '../components/screens/Groups/GroupsScreen';
 import GroupDetailsScreen from '../components/screens/Groups/GroupDetailsScreen';
 import EditPostScreen from '../components/screens/posts/EditPostScreen';
 import SearchScreen from '../components/screens/serach/SearchScreen';
+import ChatListScreen from '../components/screens/Chat/ChatListScreen';
+import ChatConversationScreen from '../components/screens/Chat/ChatConversationScreen';
 
 const Stack = createStackNavigator(); 
 
@@ -80,6 +82,26 @@ export default function HomeNavigator() {
         options={{ 
           headerShown: false,
           presentation: 'modal'
+        }} 
+      />
+
+      {/* 🆕 מסכי צ'אט */}
+      <Stack.Screen 
+        name="ChatList" 
+        component={ChatListScreen} 
+        options={{ 
+          headerShown: false,
+          presentation: 'modal'
+        }} 
+      />
+
+      <Stack.Screen 
+        name="ChatConversation" 
+        component={ChatConversationScreen} 
+        options={{ 
+          headerShown: false,
+          presentation: 'card', // לא modal כדי שיהיה עם אנימציה רגילה
+          animationEnabled: true
         }} 
       />
     </Stack.Navigator>
