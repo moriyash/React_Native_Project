@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { recipeService } from '../../services/recipeService';
+import { groupService } from '../../services/GroupService';
 
 // צבעי Cooksy
 const COOKSY_COLORS = {
@@ -41,7 +42,12 @@ const MEAT_TYPES = [
   'Fish', 'Seafood', 'Lamb', 'Turkey', 'Mixed'
 ];
 
-const CreatePostComponent = ({ onPostCreated, currentUser }) => {
+const CreatePostComponent = ({ 
+  onPostCreated, 
+  currentUser, 
+  groupId = null, // ⬅️ חדש! אם יש groupId זה פוסט לקבוצה
+  groupName = null // ⬅️ חדש! שם הקבוצה להצגה
+}) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [ingredients, setIngredients] = useState('');
@@ -57,6 +63,9 @@ const CreatePostComponent = ({ onPostCreated, currentUser }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showMeatTypeModal, setShowMeatTypeModal] = useState(false);
+
+  // בדיקה אם זה פוסט לקבוצה
+  const isGroupPost = !!groupId;
 
   const validateForm = () => {
     const newErrors = {};
@@ -131,73 +140,94 @@ const CreatePostComponent = ({ onPostCreated, currentUser }) => {
   };
 
   const handleSubmit = async () => {
-  console.log('🔍 Submitting form...');
-  
-  if (!validateForm()) {
-    Alert.alert('Missing Information', 'Please fill in all required fields to share your delicious recipe!');
-    return;
-  }
+    console.log('🔍 Submitting form...');
+    console.log('📋 Is group post:', isGroupPost, 'Group ID:', groupId);
+    
+    if (!validateForm()) {
+      Alert.alert('Missing Information', 'Please fill in all required fields to share your delicious recipe!');
+      return;
+    }
 
-  setIsLoading(true);
+    setIsLoading(true);
 
     try {
-    const totalMinutes = (parseInt(prepTimeHours) || 0) * 60 + (parseInt(prepTimeMinutes) || 0);
-    
-    const recipeData = {
-      title: title.trim(),
-      description: description.trim(),
-      ingredients: ingredients.trim(),
-      instructions: instructions.trim(),
-      category: category,
-      meatType: meatType,
-      prepTime: totalMinutes,
-      servings: parseInt(servings) || 1,
-      image: image ? image.uri : null,
-      // 🔧 תיקון: שליחת כל סוגי ה-ID האפשריים
-      userId: currentUser?.id || currentUser?._id || currentUser?.userId || 'unknown',
-      // 🔧 תיקון: שליחת שם מלא נכון
-      userName: currentUser?.fullName || currentUser?.name || currentUser?.displayName || currentUser?.username || 'Anonymous Chef',
-      userAvatar: currentUser?.avatar || currentUser?.userAvatar || null
-    };
-
-    console.log('🔍 Recipe data with user info:', {
-      userId: recipeData.userId,
-      userName: recipeData.userName,
-      userAvatar: recipeData.userAvatar,
-      currentUser: currentUser
-    });
-
-    const result = await recipeService.createRecipe(recipeData);
-
-    if (result && result.success) {
-      Alert.alert('Recipe Shared! 🍳', 'Your delicious recipe has been shared with the Cooksy community!');
+      const totalMinutes = (parseInt(prepTimeHours) || 0) * 60 + (parseInt(prepTimeMinutes) || 0);
       
-      // Reset form
-      setTitle('');
-      setDescription('');
-      setIngredients('');
-      setInstructions('');
-      setCategory('');
-      setMeatType('');
-      setPrepTimeHours('');
-      setPrepTimeMinutes('');
-      setServings('');
-      setImage(null);
-      setErrors({});
-      
-      if (onPostCreated) {
-        onPostCreated(result.data);
+      const recipeData = {
+        title: title.trim(),
+        description: description.trim(),
+        ingredients: ingredients.trim(),
+        instructions: instructions.trim(),
+        category: category,
+        meatType: meatType,
+        prepTime: totalMinutes,
+        servings: parseInt(servings) || 1,
+        userId: currentUser?.id || currentUser?._id || currentUser?.userId || 'unknown',
+        userName: currentUser?.fullName || currentUser?.name || currentUser?.displayName || currentUser?.username || 'Anonymous Chef',
+        userAvatar: currentUser?.avatar || currentUser?.userAvatar || null
+      };
+
+      console.log('🔍 Recipe data with user info:', {
+        userId: recipeData.userId,
+        userName: recipeData.userName,
+        userAvatar: recipeData.userAvatar,
+        isGroupPost,
+        groupId
+      });
+
+      let result;
+
+      if (isGroupPost) {
+        // ⬅️ פוסט לקבוצה
+        console.log('📤 Creating group post...');
+        result = await groupService.createGroupPost(groupId, recipeData, image?.uri);
+      } else {
+        // ⬅️ פוסט רגיל לעמוד הבית
+        console.log('📤 Creating regular post...');
+        const regularRecipeData = {
+          ...recipeData,
+          image: image ? image.uri : null
+        };
+        result = await recipeService.createRecipe(regularRecipeData);
       }
-    } else {
-      Alert.alert('Upload Failed', result ? result.message : 'Failed to share recipe. Please try again.');
+
+      if (result && result.success) {
+        const successMessage = isGroupPost 
+          ? `Recipe shared with ${groupName}! 🍳`
+          : 'Recipe Shared! 🍳';
+        
+        const successDescription = isGroupPost
+          ? `Your delicious recipe has been shared with the ${groupName} group!`
+          : 'Your delicious recipe has been shared with the Cooksy community!';
+
+        Alert.alert(successMessage, successDescription);
+        
+        // Reset form
+        setTitle('');
+        setDescription('');
+        setIngredients('');
+        setInstructions('');
+        setCategory('');
+        setMeatType('');
+        setPrepTimeHours('');
+        setPrepTimeMinutes('');
+        setServings('');
+        setImage(null);
+        setErrors({});
+        
+        if (onPostCreated) {
+          onPostCreated(result.data);
+        }
+      } else {
+        Alert.alert('Upload Failed', result ? result.message : 'Failed to share recipe. Please try again.');
+      }
+    } catch (error) {
+      console.error('Submit error:', error);
+      Alert.alert('Connection Error', 'Unable to share recipe. Please check your connection and try again.');
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error) {
-    console.error('Submit error:', error);
-    Alert.alert('Connection Error', 'Unable to share recipe. Please check your connection and try again.');
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   const clearError = (field) => {
     if (errors[field]) {
@@ -228,8 +258,39 @@ const CreatePostComponent = ({ onPostCreated, currentUser }) => {
     />
   );
 
+  // הצגת כותרת מותאמת
+  const getHeaderInfo = () => {
+    if (isGroupPost) {
+      return {
+        title: `Share with ${groupName}`,
+        subtitle: `Share your recipe with the ${groupName} group`,
+        icon: 'people'
+      };
+    }
+    return {
+      title: 'Share Recipe',
+      subtitle: 'Share your recipe with the Cooksy community',
+      icon: 'restaurant'
+    };
+  };
+
+  const headerInfo = getHeaderInfo();
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* Header אם זה פוסט לקבוצה */}
+      {isGroupPost && (
+        <View style={styles.groupHeader}>
+          <View style={styles.groupHeaderIcon}>
+            <Ionicons name="people" size={24} color={COOKSY_COLORS.secondary} />
+          </View>
+          <View style={styles.groupHeaderText}>
+            <Text style={styles.groupHeaderTitle}>Sharing with {groupName}</Text>
+            <Text style={styles.groupHeaderSubtitle}>This recipe will be visible to group members</Text>
+          </View>
+        </View>
+      )}
+
       <View style={styles.form}>
         {/* Recipe Title */}
         <View style={styles.inputGroup}>
@@ -419,8 +480,15 @@ const CreatePostComponent = ({ onPostCreated, currentUser }) => {
             <ActivityIndicator size="small" color={COOKSY_COLORS.white} />
           ) : (
             <>
-              <Ionicons name="restaurant" size={20} color={COOKSY_COLORS.white} style={{ marginRight: 8 }} />
-              <Text style={styles.submitButtonText}>Share Recipe</Text>
+              <Ionicons 
+                name={headerInfo.icon} 
+                size={20} 
+                color={COOKSY_COLORS.white} 
+                style={{ marginRight: 8 }} 
+              />
+              <Text style={styles.submitButtonText}>
+                {isGroupPost ? `Share with ${groupName}` : 'Share Recipe'}
+              </Text>
             </>
           )}
         </TouchableOpacity>
@@ -481,6 +549,39 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COOKSY_COLORS.background,
+  },
+  groupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COOKSY_COLORS.white,
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: COOKSY_COLORS.secondary,
+  },
+  groupHeaderIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: COOKSY_COLORS.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  groupHeaderText: {
+    flex: 1,
+  },
+  groupHeaderTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COOKSY_COLORS.text,
+    marginBottom: 2,
+  },
+  groupHeaderSubtitle: {
+    fontSize: 14,
+    color: COOKSY_COLORS.textLight,
   },
   form: {
     padding: 16,

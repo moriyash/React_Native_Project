@@ -16,6 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../services/AuthContext';
 import { recipeService } from '../../../services/recipeService';
+import { userService } from '../../../services/UserService';
 import UserAvatar from '../../common/UserAvatar';
 import PostComponent from '../../common/PostComponent';
 
@@ -46,6 +47,10 @@ const ProfileScreen = ({ route, navigation }) => {
     followersCount: 0
   });
 
+  // Follow system state
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
+
   // אם זה הפרופיל של המשתמש הנוכחי או של משתמש אחר
   const userId = route?.params?.userId || currentUser?.id || currentUser?._id;
   const isOwnProfile = userId === (currentUser?.id || currentUser?._id);
@@ -60,11 +65,24 @@ const ProfileScreen = ({ route, navigation }) => {
       // אם זה הפרופיל שלי, השתמש בנתוני המשתמש הנוכחי
       if (isOwnProfile) {
         setProfileUser(currentUser);
+        console.log('📱 Loading own profile:', currentUser?.fullName);
       } else {
-        // TODO: טען נתוני משתמש אחר מהשרת
-        // const userResult = await userService.getUserById(userId);
-        // setProfileUser(userResult.data);
-        setProfileUser(currentUser); // זמני
+        // טען נתוני משתמש אחר מהשרת
+        console.log('🔍 Loading profile for user ID:', userId);
+        const userResult = await userService.getUserProfile(userId);
+        
+        if (userResult.success) {
+          setProfileUser(userResult.data);
+          console.log('✅ Loaded other user profile:', userResult.data?.fullName);
+          
+          // טען סטטוס המעקב
+          await loadFollowStatus();
+        } else {
+          console.error('❌ Failed to load user profile:', userResult.message);
+          Alert.alert('Error', 'Failed to load user profile');
+          navigation.goBack();
+          return;
+        }
       }
 
       // טען את הפוסטים של המשתמש
@@ -78,8 +96,36 @@ const ProfileScreen = ({ route, navigation }) => {
     }
   };
 
+  // הוסף פונקציה לטעינת סטטוס המעקב
+  const loadFollowStatus = async () => {
+    if (isOwnProfile || !currentUser?.id) return;
+    
+    try {
+      const response = await fetch(
+        `http://192.168.1.222:3000/api/users/${userId}/follow-status/${currentUser.id || currentUser._id}`,
+        {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        setIsFollowing(result.isFollowing);
+        setStats(prev => ({
+          ...prev,
+          followersCount: result.followersCount
+        }));
+      }
+    } catch (error) {
+      console.error('Load follow status error:', error);
+    }
+  };
+
   const loadUserPosts = async () => {
     try {
+      console.log('🔍 Loading posts for user ID:', userId);
       const result = await recipeService.getAllRecipes();
       
       if (result.success) {
@@ -90,6 +136,8 @@ const ProfileScreen = ({ route, navigation }) => {
           post.user?.id === userId || 
           post.user?._id === userId
         );
+
+        console.log(`📊 Found ${filteredPosts.length} posts for user ${userId}`);
 
         // מיון לפי תאריך
         const sortedPosts = filteredPosts.sort((a, b) => 
@@ -103,14 +151,55 @@ const ProfileScreen = ({ route, navigation }) => {
           sum + (post.likes ? post.likes.length : 0), 0
         );
 
-        setStats({
+        setStats(prev => ({
+          ...prev,
           postsCount: sortedPosts.length,
-          likesCount: totalLikes,
-          followersCount: 0 // TODO: הוסף followers במסתקבל
-        });
+          likesCount: totalLikes
+        }));
       }
     } catch (error) {
       console.error('Posts load error:', error);
+    }
+  };
+
+  // הוסף פונקציית Follow/Unfollow
+  const handleFollowToggle = async () => {
+    if (isFollowLoading || !currentUser?.id) return;
+    
+    setIsFollowLoading(true);
+    try {
+      const endpoint = `http://192.168.1.222:3000/api/users/${userId}/follow`;
+      const method = isFollowing ? 'DELETE' : 'POST';
+      
+      const response = await fetch(endpoint, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          followerId: currentUser.id || currentUser._id
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        setIsFollowing(!isFollowing);
+        setStats(prev => ({
+          ...prev,
+          followersCount: result.followersCount
+        }));
+        
+        Alert.alert(
+          'Success', 
+          isFollowing ? 'Unfollowed successfully' : 'Following successfully!'
+        );
+      } else {
+        Alert.alert('Error', result.message || 'Failed to update follow status');
+      }
+    } catch (error) {
+      console.error('Follow toggle error:', error);
+      Alert.alert('Error', 'Failed to update follow status');
+    } finally {
+      setIsFollowLoading(false);
     }
   };
 
@@ -187,8 +276,29 @@ const ProfileScreen = ({ route, navigation }) => {
           </>
         ) : (
           <>
-            <TouchableOpacity style={styles.followButton}>
-              <Text style={styles.followButtonText}>Follow</Text>
+            <TouchableOpacity 
+              style={[
+                styles.followButton, 
+                isFollowing && styles.followingButton,
+                isFollowLoading && styles.followButtonDisabled
+              ]}
+              onPress={handleFollowToggle}
+              disabled={isFollowLoading}
+            >
+              {isFollowLoading ? (
+                <ActivityIndicator size="small" color={COOKSY_COLORS.white} />
+              ) : (
+                <>
+                  <Ionicons 
+                    name={isFollowing ? "checkmark" : "add"} 
+                    size={16} 
+                    color={COOKSY_COLORS.white} 
+                  />
+                  <Text style={styles.followButtonText}>
+                    {isFollowing ? 'Following' : 'Follow'}
+                  </Text>
+                </>
+              )}
             </TouchableOpacity>
             
             <TouchableOpacity style={styles.messageButton}>
@@ -470,15 +580,24 @@ const styles = StyleSheet.create({
     borderColor: COOKSY_COLORS.border,
   },
   followButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: COOKSY_COLORS.secondary,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
     marginRight: 12,
   },
+  followingButton: {
+    backgroundColor: COOKSY_COLORS.success,
+  },
+  followButtonDisabled: {
+    opacity: 0.6,
+  },
   followButtonText: {
     color: COOKSY_COLORS.white,
     fontWeight: '600',
+    marginLeft: 6,
   },
   messageButton: {
     padding: 10,

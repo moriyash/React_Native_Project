@@ -3,9 +3,10 @@ import { createStackNavigator } from '@react-navigation/stack';
 import HomeScreen from '../components/screens/Home/HomeScreen';
 import ProfileScreen from '../components/screens/Profile/ProfileScreen';
 import EditProfileScreen from '../components/screens/Profile/EditProfileScreen';
-import GroupsScreen from '../components/screens/Groups/GroupsScreen';
 import CreateGroupComponent from '../components/groups/CreateGroupComponent';
-
+import GroupsScreen from '../components/screens/Groups/GroupsScreen';
+import GroupDetailsScreen from '../components/screens/Groups/GroupDetailsScreen';
+import EditPostScreen from '../components/screens/posts/EditPostScreen';
 
 const Stack = createStackNavigator(); 
 
@@ -36,6 +37,14 @@ export default function HomeNavigator() {
         }} 
       />
 
+      <Stack.Screen 
+        name="EditPost" 
+        component={EditPostScreen} 
+        options={{ 
+          headerShown: false 
+        }}
+      />
+
       {/* הוספת מסכי קבוצות */}
       <Stack.Screen 
         name="Groups" 
@@ -47,6 +56,14 @@ export default function HomeNavigator() {
       />
 
       <Stack.Screen 
+        name="GroupDetails" 
+        component={GroupDetailsScreen} 
+        options={{ 
+          headerShown: false
+        }} 
+      />
+
+      <Stack.Screen 
         name="CreateGroup" 
         component={CreateGroupComponent} 
         options={{ 
@@ -54,17 +71,6 @@ export default function HomeNavigator() {
           presentation: 'modal'
         }} 
       />
-
-      {/* TODO: הוסף בעתיד */}
-      {/* 
-      <Stack.Screen 
-        name="GroupDetails" 
-        component={GroupDetailsScreen} 
-        options={{ 
-          headerShown: false 
-        }} 
-      />
-      */}
     </Stack.Navigator>
   );
 }

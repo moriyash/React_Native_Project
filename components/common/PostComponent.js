@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { recipeService } from '../../services/recipeService';
+import { groupService } from '../../services/GroupService';
 import { useAuth } from '../../services/AuthContext';
 import UserAvatar from './UserAvatar';
 
@@ -36,7 +37,16 @@ const COOKSY_COLORS = {
 
 const { width: screenWidth } = Dimensions.get('window');
 
-const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData, navigation }) => {
+const PostComponent = ({ 
+  post, 
+  onUpdate, 
+  onDelete, 
+  onShare, 
+  onRefreshData, 
+  navigation,
+  isGroupPost = false,
+  groupId = null 
+}) => {
   const safePost = post || {};
   const { currentUser, isLoading } = useAuth();
   
@@ -47,6 +57,7 @@ const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData, navig
   // State אחר
   const [showComments, setShowComments] = useState(false);
   const [showFullRecipe, setShowFullRecipe] = useState(false);
+  const [showOptionsModal, setShowOptionsModal] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [isSubmittingLike, setIsSubmittingLike] = useState(false);
@@ -144,7 +155,7 @@ const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData, navig
       return;
     }
 
-    console.log('👍 Attempting to like/unlike:', { postId, currentUserId, isLiked });
+    console.log('👍 Attempting to like/unlike:', { postId, currentUserId, isLiked, isGroupPost, groupId });
     setIsSubmittingLike(true);
 
     // עדכון אופטימיסטי - עדכן מיידית לפני השרת
@@ -157,12 +168,27 @@ const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData, navig
 
     try {
       let result;
-      if (isLiked) {
-        console.log('👎 Unliking recipe...');
-        result = await recipeService.unlikeRecipe(postId);
+      
+      if (isGroupPost && groupId) {
+        // פוסט של קבוצה - נשתמש ב-groupService
+        console.log('🏠 Using group service for like/unlike...');
+        if (isLiked) {
+          console.log('👎 Unliking group post...');
+          result = await groupService.unlikeGroupPost(groupId, postId, currentUserId);
+        } else {
+          console.log('👍 Liking group post...');
+          result = await groupService.likeGroupPost(groupId, postId, currentUserId);
+        }
       } else {
-        console.log('👍 Liking recipe...');
-        result = await recipeService.likeRecipe(postId);
+        // פוסט רגיל - נשתמש ב-recipeService (הקוד הקיים)
+        console.log('🍳 Using recipe service for like/unlike...');
+        if (isLiked) {
+          console.log('👎 Unliking recipe...');
+          result = await recipeService.unlikeRecipe(postId);
+        } else {
+          console.log('👍 Liking recipe...');
+          result = await recipeService.likeRecipe(postId);
+        }
       }
 
       console.log('📊 Like result:', result);
@@ -210,15 +236,29 @@ const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData, navig
       return;
     }
 
-    console.log('💬 Adding comment:', { postId, currentUserId, currentUserName });
+    console.log('💬 Adding comment:', { postId, currentUserId, currentUserName, isGroupPost, groupId });
     setIsSubmittingComment(true);
 
     try {
-      const result = await recipeService.addComment(postId, {
-        text: newComment.trim(),
-        userId: currentUserId,
-        userName: currentUserName
-      });
+      let result;
+      
+      if (isGroupPost && groupId) {
+        // תגובה לפוסט של קבוצה
+        console.log('🏠 Adding comment to group post...');
+        result = await groupService.addCommentToGroupPost(groupId, postId, {
+          text: newComment.trim(),
+          userId: currentUserId,
+          userName: currentUserName
+        });
+      } else {
+        // תגובה לפוסט רגיל
+        console.log('🍳 Adding comment to regular post...');
+        result = await recipeService.addComment(postId, {
+          text: newComment.trim(),
+          userId: currentUserId,
+          userName: currentUserName
+        });
+      }
 
       if (result.success) {
         setNewComment('');
@@ -244,7 +284,17 @@ const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData, navig
 
   const handleDeleteComment = async (commentId) => {
     try {
-      const result = await recipeService.deleteComment(postId, commentId);
+      let result;
+      
+      if (isGroupPost && groupId) {
+        // מחיקת תגובה מפוסט של קבוצה
+        console.log('🏠 Deleting comment from group post...');
+        result = await groupService.deleteCommentFromGroupPost(groupId, postId, commentId, currentUserId);
+      } else {
+        // מחיקת תגובה מפוסט רגיל
+        console.log('🍳 Deleting comment from regular post...');
+        result = await recipeService.deleteComment(postId, commentId);
+      }
       
       if (result.success) {
         // עדכון מיידי של התגובות
@@ -257,11 +307,39 @@ const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData, navig
         Alert.alert('Error', result.message || 'Failed to delete comment');
       }
     } catch (error) {
+      console.error('❌ Delete comment error:', error);
       Alert.alert('Error', 'Failed to delete comment');
     }
   };
 
+  // הוסף פונקציה לעריכת פוסט
+  const handleEdit = () => {
+    setShowOptionsModal(false);
+    
+    // נווט למסך עריכת פוסט עם הנתונים הקיימים
+    if (navigation) {
+      navigation.navigate('EditPost', { 
+        postId: postId,
+        postData: {
+          title: safePost.title,
+          description: safePost.description,
+          ingredients: safePost.ingredients,
+          instructions: safePost.instructions,
+          category: safePost.category,
+          meatType: safePost.meatType,
+          prepTime: safePost.prepTime,
+          servings: safePost.servings,
+          image: safePost.image
+        },
+        isGroupPost,
+        groupId
+      });
+    }
+  };
+
   const handleDelete = () => {
+    setShowOptionsModal(false);
+    
     if (!currentUserId || !safePost.userId) {
       Alert.alert('Error', 'Cannot determine ownership');
       return;
@@ -283,7 +361,7 @@ const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData, navig
       'Delete Recipe',
       'Are you sure you want to delete this delicious recipe?',
       [
-        { text: 'Keep It', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
@@ -335,6 +413,46 @@ const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData, navig
       </View>
     </View>
   );
+
+  // Options Modal
+  const renderOptionsModal = () => {
+    const isOwner = currentUserId && (
+      safePost.userId === currentUserId || 
+      safePost.userId === currentUser?.id || 
+      safePost.userId === currentUser?._id
+    );
+
+    if (!isOwner) return null;
+
+    return (
+      <Modal
+        visible={showOptionsModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowOptionsModal(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowOptionsModal(false)}
+        >
+          <View style={styles.optionsModal}>
+            <TouchableOpacity style={styles.optionItem} onPress={handleEdit}>
+              <Ionicons name="create-outline" size={20} color={COOKSY_COLORS.accent} />
+              <Text style={styles.optionText}>Edit Recipe</Text>
+            </TouchableOpacity>
+            
+            <View style={styles.optionSeparator} />
+            
+            <TouchableOpacity style={styles.optionItem} onPress={handleDelete}>
+              <Ionicons name="trash-outline" size={20} color={COOKSY_COLORS.danger} />
+              <Text style={[styles.optionText, { color: COOKSY_COLORS.danger }]}>Delete Recipe</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    );
+  };
 
   const renderCommentsModal = () => (
     <Modal
@@ -493,7 +611,10 @@ const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData, navig
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.moreButton}>
+        <TouchableOpacity 
+          style={styles.moreButton}
+          onPress={() => setShowOptionsModal(true)}
+        >
           <Ionicons name="ellipsis-horizontal" size={20} color={COOKSY_COLORS.textLight} />
         </TouchableOpacity>
       </View>
@@ -568,14 +689,9 @@ const PostComponent = ({ post, onUpdate, onDelete, onShare, onRefreshData, navig
           <Ionicons name="share-outline" size={20} color={COOKSY_COLORS.textLight} />
           <Text style={styles.actionText}>Share</Text>
         </TouchableOpacity>
-
-        {currentUserId && (safePost.userId === currentUserId || safePost.userId === currentUser?.id || safePost.userId === currentUser?._id) && (
-          <TouchableOpacity style={styles.actionButton} onPress={handleDelete}>
-            <Ionicons name="trash-outline" size={20} color={COOKSY_COLORS.danger} />
-          </TouchableOpacity>
-        )}
       </View>
 
+      {renderOptionsModal()}
       {renderCommentsModal()}
       {renderFullRecipeModal()}
     </View>
@@ -708,6 +824,42 @@ const styles = StyleSheet.create({
   },
   likedText: {
     color: COOKSY_COLORS.danger,
+  },
+  
+  // Options Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  optionsModal: {
+    backgroundColor: COOKSY_COLORS.white,
+    borderRadius: 12,
+    paddingVertical: 8,
+    minWidth: 160,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  optionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  optionText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: COOKSY_COLORS.text,
+    marginLeft: 12,
+  },
+  optionSeparator: {
+    height: 1,
+    backgroundColor: COOKSY_COLORS.border,
+    marginHorizontal: 16,
   },
   
   // Comments Modal Styles

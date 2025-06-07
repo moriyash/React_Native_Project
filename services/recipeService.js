@@ -182,14 +182,59 @@ export const recipeService = {
     }
   },
 
-  updateRecipe: async (recipeId, recipeData) => {
+  async updateRecipe(recipeId, updateData, imageUri = null) {
     try {
-      const response = await api.put(`/recipes/${recipeId}`, recipeData);
-      return { success: true, data: response.data };
+      console.log('🔄 Updating recipe...');
+      
+      const formData = new FormData();
+      
+      // הוספת נתוני המתכון המעודכנים
+      formData.append('title', updateData.title);
+      formData.append('description', updateData.description || '');
+      formData.append('ingredients', updateData.ingredients || '');
+      formData.append('instructions', updateData.instructions || '');
+      formData.append('category', updateData.category || 'General');
+      formData.append('meatType', updateData.meatType || 'Mixed');
+      formData.append('prepTime', updateData.prepTime?.toString() || '0');
+      formData.append('servings', updateData.servings?.toString() || '1');
+      formData.append('userId', updateData.userId);
+
+      // אם יש תמונה חדשה
+      if (imageUri) {
+        formData.append('image', {
+          uri: imageUri,
+          type: 'image/jpeg',
+          name: 'recipe-image.jpg',
+        });
+      } else if (updateData.image) {
+        // שמירת התמונה הקיימת
+        formData.append('image', updateData.image);
+      }
+
+      const response = await fetch(`${this.baseURL}/recipes/${recipeId}`, {
+        method: 'PUT',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      const result = await response.json();
+      
+      if (response.ok) {
+        console.log('✅ Recipe updated successfully');
+        return {
+          success: true,
+          data: result
+        };
+      } else {
+        throw new Error(result.message || 'Failed to update recipe');
+      }
     } catch (error) {
+      console.error('❌ Update recipe error:', error);
       return {
         success: false,
-        message: error.response?.data?.message || error.message || 'Failed to update recipe'
+        message: error.message
       };
     }
   },

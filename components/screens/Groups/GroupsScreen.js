@@ -1,6 +1,6 @@
 // components/screens/groups/GroupsScreen.js
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -44,7 +44,17 @@ const GroupsScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedTab, setSelectedTab] = useState('my'); // my, discover
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+
+  // הוסף debounced search עם useEffect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300); // דיליי של 300ms
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     loadGroups();
@@ -119,6 +129,23 @@ const GroupsScreen = ({ navigation }) => {
     // נווט לעמוד פרטי הקבוצה
     navigation.navigate('GroupDetails', { groupId: group._id });
   };
+
+  // החלף את filteredGroups ב-useMemo עם חיפוש משופר
+  const filteredGroups = useMemo(() => {
+    const currentGroups = selectedTab === 'my' ? myGroups : groups;
+    
+    if (!debouncedSearchQuery.trim()) {
+      return currentGroups;
+    }
+
+    const query = debouncedSearchQuery.toLowerCase();
+    return currentGroups.filter(group =>
+      group.name.toLowerCase().includes(query) ||
+      group.description?.toLowerCase().includes(query) ||
+      group.category.toLowerCase().includes(query) ||
+      group.creatorName?.toLowerCase().includes(query)
+    );
+  }, [selectedTab, myGroups, groups, debouncedSearchQuery]);
 
   const renderGroupCard = ({ item: group }) => {
     const isMember = groupService.isMember(group, currentUser?.id || currentUser?._id);
@@ -279,20 +306,6 @@ const GroupsScreen = ({ navigation }) => {
     </View>
   );
 
-  const filteredGroups = () => {
-    const currentGroups = selectedTab === 'my' ? myGroups : groups;
-    
-    if (!searchQuery.trim()) {
-      return currentGroups;
-    }
-
-    return currentGroups.filter(group =>
-      group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      group.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      group.category.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  };
-
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -326,7 +339,7 @@ const GroupsScreen = ({ navigation }) => {
       </View>
 
       <FlatList
-        data={filteredGroups()}
+        data={filteredGroups}
         keyExtractor={(item) => item._id}
         renderItem={renderGroupCard}
         ListHeaderComponent={renderHeader}

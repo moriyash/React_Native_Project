@@ -20,6 +20,553 @@ app.use((req, res, next) => {
   next();
 });
 
+// ============ GROUP POST ROUTES ============
+
+// Create new group post
+app.post('/api/groups/:groupId/posts', upload.any(), async (req, res) => {
+  try {
+    console.log('=== Group Post Creation Debug ===');
+    console.log('Group ID:', req.params.groupId);
+    console.log('MongoDB connected:', isMongoConnected());
+    
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    // בדיקת תקינות Group ID
+    if (!mongoose.Types.ObjectId.isValid(req.params.groupId)) {
+      return res.status(400).json({ message: 'Invalid group ID' });
+    }
+
+    // בדיקה שהקבוצה קיימת
+    const group = await Group.findById(req.params.groupId);
+    if (!group) {
+      return res.status(404).json({ message: 'Group not found' });
+    }
+
+    const formData = req.body;
+    console.log('Group post data received:', formData);
+
+    // בדיקה שהמשתמש חבר בקבוצה
+    const userId = formData.userId;
+    const isMember = group.members.some(member => member.userId === userId);
+    if (!isMember) {
+      return res.status(403).json({ message: 'Only group members can post' });
+    }
+
+    // בדיקה שמותר לחברים לפרסם
+    if (!group.settings.allowMemberPosts) {
+      const isAdmin = group.members.some(member => 
+        member.userId === userId && member.role === 'admin'
+      );
+      if (!isAdmin && group.creatorId !== userId) {
+        return res.status(403).json({ message: 'Only admins can post in this group' });
+      }
+    }
+
+    if (!formData.title || formData.title.trim() === '') {
+      return res.status(400).json({ message: 'Recipe title is required' });
+    }
+
+    // טיפול בתמונה
+    let imageData = null;
+    if (req.files && req.files.length > 0) {
+      const imageFile = req.files.find(file => 
+        file.fieldname === 'image' || 
+        file.mimetype.startsWith('image/')
+      );
+      
+      if (imageFile) {
+        const base64Image = imageFile.buffer.toString('base64');
+        imageData = `data:${imageFile.mimetype};base64,${base64Image}`;
+        console.log('Group post image converted to base64');
+      }
+    }
+
+    if (!imageData && formData.image) {
+      imageData = formData.image;
+    }
+
+    // יצירת פוסט הקבוצה
+    const postData = {
+      title: formData.title.trim(),
+      description: formData.description || '',
+      ingredients: formData.ingredients || '',
+      instructions: formData.instructions || '',
+      category: formData.category || 'General',
+      meatType: formData.meatType || 'Mixed',
+      prepTime: parseInt(formData.prepTime) || 0,
+      servings: parseInt(formData.servings) || 1,
+      image: imageData,
+      userId: userId,
+      groupId: req.params.groupId, // ⬅️ חשוב!
+      likes: [],
+      comments: [],
+      isApproved: !group.settings.requireApproval || group.creatorId === userId // אוטו-אישור ליוצר
+    };
+
+    const groupPost = new GroupPost(postData);
+    const savedPost = await groupPost.save();
+    
+    console.log('Group post saved successfully:', savedPost._id);
+
+    // החזרת הפוסט עם נתוני המשתמש
+    const user = await User.findById(savedPost.userId);
+    const enrichedPost = {
+      ...savedPost.toObject(),
+      userName: user ? user.fullName : 'Unknown User',
+      userAvatar: user ? user.avatar : null,
+      userBio: user ? user.bio : null,
+      groupName: group.name
+    };
+
+    res.status(201).json(enrichedPost);
+  } catch (error) {
+    console.error('=== GROUP POST CREATION ERROR ===');
+    console.error('Error:', error);
+    res.status(500).json({ message: 'Failed to create group post' });
+  }
+});
+
+// Get all posts for a specific group
+app.get('/api/groups/:groupId/posts', async (req, res) => {
+  try {
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(req.params.groupId)) {
+      return res.status(400).json({ message: 'Invalid group ID' });
+    }
+
+    // בדיקה שהקבוצה קיימת
+    const group = await Group.findById(req.params.groupId);
+    if (!group) {
+      return res.status(404).json({ message: 'Group not found' });
+    }
+
+    // אם הקבוצה פרטית, בדוק שהמשתמש חבר
+    const { userId } = req.query;
+    if (group.isPrivate && userId) {
+      const isMember = group.members.some(member => member.userId === userId);
+      if (!isMember) {
+        return res.status(403).json({ message: 'Access denied to private group' });
+      }
+    }
+
+    // טען פוסטים של הקבוצה (רק מאושרים)
+    const posts = await GroupPost.find({ 
+      groupId: req.params.groupId,
+      isApproved: true 
+    }).sort({ createdAt: -1 });
+
+    // העשרה עם נתוני המשתמש
+    const enrichedPosts = await Promise.all(
+      posts.map(async (post) => {
+        const user = await User.findById(post.userId);
+        return {
+          ...post.toObject(),
+          userName: user ? user.fullName : 'Unknown User',
+          userAvatar: user ? user.avatar : null,
+          userBio: user ? user.bio : null,
+          groupName: group.name
+        };
+      })
+    );
+
+    res.json(enrichedPosts);
+  } catch (error) {
+    console.error('Get group posts error:', error);
+    res.status(500).json({ message: 'Failed to fetch group posts' });
+  }
+});
+
+// Delete group post
+app.delete('/api/groups/:groupId/posts/:postId', async (req, res) => {
+  try {
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { groupId, postId } = req.params;
+    const { userId } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(groupId) || !mongoose.Types.ObjectId.isValid(postId)) {
+      return res.status(400).json({ message: 'Invalid group or post ID' });
+    }
+
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: 'Group not found' });
+    }
+
+    const post = await GroupPost.findById(postId);
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    // בדיקת הרשאות - יוצר הפוסט או אדמין של הקבוצה
+    const isPostOwner = post.userId === userId;
+    const isGroupAdmin = group.members.some(member => 
+      member.userId === userId && member.role === 'admin'
+    );
+    const isGroupCreator = group.creatorId === userId;
+
+    if (!isPostOwner && !isGroupAdmin && !isGroupCreator) {
+      return res.status(403).json({ message: 'Permission denied' });
+    }
+
+    await GroupPost.findByIdAndDelete(postId);
+    res.json({ message: 'Group post deleted successfully' });
+  } catch (error) {
+    console.error('Delete group post error:', error);
+    res.status(500).json({ message: 'Failed to delete group post' });
+  }
+});
+
+// ============ GROUP POST INTERACTIONS ============
+// הוסף את הקוד הזה אחרי הקוד הקיים של GROUP POST ROUTES בשרת שלך
+
+// Like group post
+app.post('/api/groups/:groupId/posts/:postId/like', async (req, res) => {
+  try {
+    console.log('👍 Liking group post...');
+    
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { groupId, postId } = req.params;
+    const { userId } = req.body;
+
+    // בדיקת תקינות IDs
+    if (!mongoose.Types.ObjectId.isValid(groupId) || !mongoose.Types.ObjectId.isValid(postId)) {
+      return res.status(400).json({ message: 'Invalid group or post ID' });
+    }
+
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    // בדיקה שהקבוצה קיימת
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: 'Group not found' });
+    }
+
+    // בדיקה שהמשתמש חבר בקבוצה
+    const isMember = group.members.some(member => member.userId === userId);
+    if (!isMember) {
+      return res.status(403).json({ message: 'Only group members can like posts' });
+    }
+
+    // מציאת הפוסט
+    const post = await GroupPost.findById(postId);
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    // בדיקה שהפוסט שייך לקבוצה
+    if (post.groupId !== groupId) {
+      return res.status(400).json({ message: 'Post does not belong to this group' });
+    }
+
+    // בדיקה שעדיין לא עשה לייק
+    if (!post.likes) post.likes = [];
+    if (post.likes.includes(userId)) {
+      return res.status(400).json({ message: 'Already liked this post' });
+    }
+
+    // הוספת הלייק
+    post.likes.push(userId);
+    await post.save();
+
+    console.log('✅ Group post liked successfully');
+    res.json({ 
+      message: 'Post liked successfully',
+      likes: post.likes,
+      likesCount: post.likes.length 
+    });
+
+  } catch (error) {
+    console.error('❌ Like group post error:', error);
+    res.status(500).json({ message: 'Failed to like post' });
+  }
+});
+
+// Unlike group post
+app.delete('/api/groups/:groupId/posts/:postId/like', async (req, res) => {
+  try {
+    console.log('👎 Unliking group post...');
+    
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { groupId, postId } = req.params;
+    const { userId } = req.body;
+
+    // בדיקת תקינות IDs
+    if (!mongoose.Types.ObjectId.isValid(groupId) || !mongoose.Types.ObjectId.isValid(postId)) {
+      return res.status(400).json({ message: 'Invalid group or post ID' });
+    }
+
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    // בדיקה שהקבוצה קיימת
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: 'Group not found' });
+    }
+
+    // בדיקה שהמשתמש חבר בקבוצה
+    const isMember = group.members.some(member => member.userId === userId);
+    if (!isMember) {
+      return res.status(403).json({ message: 'Only group members can unlike posts' });
+    }
+
+    // מציאת הפוסט
+    const post = await GroupPost.findById(postId);
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    // בדיקה שהפוסט שייך לקבוצה
+    if (post.groupId !== groupId) {
+      return res.status(400).json({ message: 'Post does not belong to this group' });
+    }
+
+    // בדיקה שכבר עשה לייק
+    if (!post.likes || !post.likes.includes(userId)) {
+      return res.status(400).json({ message: 'Post not liked yet' });
+    }
+
+    // הסרת הלייק
+    post.likes = post.likes.filter(id => id !== userId);
+    await post.save();
+
+    console.log('✅ Group post unliked successfully');
+    res.json({ 
+      message: 'Post unliked successfully',
+      likes: post.likes,
+      likesCount: post.likes.length 
+    });
+
+  } catch (error) {
+    console.error('❌ Unlike group post error:', error);
+    res.status(500).json({ message: 'Failed to unlike post' });
+  }
+});
+
+// Add comment to group post
+app.post('/api/groups/:groupId/posts/:postId/comments', async (req, res) => {
+  try {
+    console.log('💬 Adding comment to group post...');
+    
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { groupId, postId } = req.params;
+    const { text, userId, userName } = req.body;
+
+    // בדיקת תקינות IDs
+    if (!mongoose.Types.ObjectId.isValid(groupId) || !mongoose.Types.ObjectId.isValid(postId)) {
+      return res.status(400).json({ message: 'Invalid group or post ID' });
+    }
+
+    if (!text || text.trim() === '') {
+      return res.status(400).json({ message: 'Comment text is required' });
+    }
+
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    // בדיקה שהקבוצה קיימת
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: 'Group not found' });
+    }
+
+    // בדיקה שהמשתמש חבר בקבוצה
+    const isMember = group.members.some(member => member.userId === userId);
+    if (!isMember) {
+      return res.status(403).json({ message: 'Only group members can comment on posts' });
+    }
+
+    // מציאת הפוסט
+    const post = await GroupPost.findById(postId);
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    // בדיקה שהפוסט שייך לקבוצה
+    if (post.groupId !== groupId) {
+      return res.status(400).json({ message: 'Post does not belong to this group' });
+    }
+
+    // יצירת התגובה החדשה
+    const newComment = {
+      userId: userId,
+      userName: userName || 'Anonymous User',
+      text: text.trim(),
+      createdAt: new Date()
+    };
+
+    // הוספת התגובה
+    if (!post.comments) post.comments = [];
+    post.comments.push(newComment);
+    await post.save();
+
+    console.log('✅ Comment added to group post successfully');
+    res.status(201).json({ 
+      message: 'Comment added successfully',
+      comment: newComment,
+      comments: post.comments,
+      commentsCount: post.comments.length 
+    });
+
+  } catch (error) {
+    console.error('❌ Add comment to group post error:', error);
+    res.status(500).json({ message: 'Failed to add comment' });
+  }
+});
+
+// Delete comment from group post
+app.delete('/api/groups/:groupId/posts/:postId/comments/:commentId', async (req, res) => {
+  try {
+    console.log('🗑️ Deleting comment from group post...');
+    
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { groupId, postId, commentId } = req.params;
+    const { userId } = req.body;
+
+    // בדיקת תקינות IDs
+    if (!mongoose.Types.ObjectId.isValid(groupId) || !mongoose.Types.ObjectId.isValid(postId)) {
+      return res.status(400).json({ message: 'Invalid group or post ID' });
+    }
+
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    // בדיקה שהקבוצה קיימת
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: 'Group not found' });
+    }
+
+    // בדיקה שהמשתמש חבר בקבוצה
+    const isMember = group.members.some(member => member.userId === userId);
+    if (!isMember) {
+      return res.status(403).json({ message: 'Only group members can delete comments' });
+    }
+
+    // מציאת הפוסט
+    const post = await GroupPost.findById(postId);
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    // בדיקה שהפוסט שייך לקבוצה
+    if (post.groupId !== groupId) {
+      return res.status(400).json({ message: 'Post does not belong to this group' });
+    }
+
+    // מציאת התגובה
+    const commentIndex = post.comments.findIndex(comment => 
+      comment._id.toString() === commentId
+    );
+
+    if (commentIndex === -1) {
+      return res.status(404).json({ message: 'Comment not found' });
+    }
+
+    const comment = post.comments[commentIndex];
+
+    // בדיקת הרשאות - יוצר התגובה או אדמין של הקבוצה
+    const isCommentOwner = comment.userId === userId;
+    const isGroupAdmin = group.members.some(member => 
+      member.userId === userId && member.role === 'admin'
+    );
+    const isGroupCreator = group.creatorId === userId;
+
+    if (!isCommentOwner && !isGroupAdmin && !isGroupCreator) {
+      return res.status(403).json({ message: 'Permission denied' });
+    }
+
+    // מחיקת התגובה
+    post.comments.splice(commentIndex, 1);
+    await post.save();
+
+    console.log('✅ Comment deleted from group post successfully');
+    res.json({ 
+      message: 'Comment deleted successfully',
+      comments: post.comments,
+      commentsCount: post.comments.length 
+    });
+
+  } catch (error) {
+    console.error('❌ Delete comment from group post error:', error);
+    res.status(500).json({ message: 'Failed to delete comment' });
+  }
+});
+
+// Get group post with comments and likes (עזר לדיבוג)
+app.get('/api/groups/:groupId/posts/:postId', async (req, res) => {
+  try {
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { groupId, postId } = req.params;
+
+    // בדיקת תקינות IDs
+    if (!mongoose.Types.ObjectId.isValid(groupId) || !mongoose.Types.ObjectId.isValid(postId)) {
+      return res.status(400).json({ message: 'Invalid group or post ID' });
+    }
+
+    // בדיקה שהקבוצה קיימת
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: 'Group not found' });
+    }
+
+    // מציאת הפוסט
+    const post = await GroupPost.findById(postId);
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    // בדיקה שהפוסט שייך לקבוצה
+    if (post.groupId !== groupId) {
+      return res.status(400).json({ message: 'Post does not belong to this group' });
+    }
+
+    // העשרה עם נתוני המשתמש
+    const user = await User.findById(post.userId);
+    const enrichedPost = {
+      ...post.toObject(),
+      userName: user ? user.fullName : 'Unknown User',
+      userAvatar: user ? user.avatar : null,
+      userBio: user ? user.bio : null,
+      groupName: group.name
+    };
+
+    res.json(enrichedPost);
+
+  } catch (error) {
+    console.error('Get group post error:', error);
+    res.status(500).json({ message: 'Failed to fetch group post' });
+  }
+});
+
 // ============ GROUP ROUTES ============
 
 // Create new group
@@ -444,8 +991,10 @@ const UserSchema = new mongoose.Schema({
   fullName: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  bio: { type: String, maxlength: 500 }, // הוספת bio
-  avatar: { type: String, maxlength: 10000000 } // תמיכה בתמונות גדולות (Base64)
+  bio: { type: String, maxlength: 500 },
+  avatar: { type: String, maxlength: 10000000 },
+  followers: [{ type: String }], // ⬅️ הוסף את השורה הזאת
+  following: [{ type: String }]  // ⬅️ הוסף את השורה הזאת
 }, { timestamps: true });
 
 const User = mongoose.model('User', UserSchema);
@@ -732,6 +1281,335 @@ app.post('/api/auth/avatar', upload.single('avatar'), async (req, res) => {
   }
 });
 
+// ============ FOLLOW SYSTEM ============
+// Follow a user
+app.post('/api/users/:userId/follow', async (req, res) => {
+  try {
+    console.log('👥 Following user...');
+    
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { userId } = req.params; // המשתמש שרוצים לעקוב אחריו
+    const { followerId } = req.body; // המשתמש שעוקב
+
+    if (!mongoose.Types.ObjectId.isValid(userId) || !followerId) {
+      return res.status(400).json({ message: 'Invalid user ID or follower ID' });
+    }
+
+    if (userId === followerId) {
+      return res.status(400).json({ message: 'Cannot follow yourself' });
+    }
+
+    // בדיקה שהמשתמשים קיימים
+    const [userToFollow, follower] = await Promise.all([
+      User.findById(userId),
+      User.findById(followerId)
+    ]);
+
+    if (!userToFollow || !follower) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // בדיקה שעדיין לא עוקב
+    if (!userToFollow.followers) userToFollow.followers = [];
+    if (!follower.following) follower.following = [];
+
+    if (userToFollow.followers.includes(followerId)) {
+      return res.status(400).json({ message: 'Already following this user' });
+    }
+
+    // הוספת המעקב
+    userToFollow.followers.push(followerId);
+    follower.following.push(userId);
+
+    await Promise.all([
+      userToFollow.save(),
+      follower.save()
+    ]);
+
+    console.log('✅ User followed successfully');
+    res.json({ 
+      message: 'User followed successfully',
+      followersCount: userToFollow.followers.length,
+      followingCount: follower.following.length
+    });
+
+  } catch (error) {
+    console.error('❌ Follow user error:', error);
+    res.status(500).json({ message: 'Failed to follow user' });
+  }
+});
+
+// Unfollow a user
+app.delete('/api/users/:userId/follow', async (req, res) => {
+  try {
+    console.log('👥 Unfollowing user...');
+    
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { userId } = req.params; // המשתמש שרוצים להפסיק לעקוב אחריו
+    const { followerId } = req.body; // המשתמש שמפסיק לעקוב
+
+    if (!mongoose.Types.ObjectId.isValid(userId) || !followerId) {
+      return res.status(400).json({ message: 'Invalid user ID or follower ID' });
+    }
+
+    // בדיקה שהמשתמשים קיימים
+    const [userToUnfollow, follower] = await Promise.all([
+      User.findById(userId),
+      User.findById(followerId)
+    ]);
+
+    if (!userToUnfollow || !follower) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // בדיקה שכבר עוקב
+    if (!userToUnfollow.followers || !userToUnfollow.followers.includes(followerId)) {
+      return res.status(400).json({ message: 'Not following this user' });
+    }
+
+    // הסרת המעקב
+    userToUnfollow.followers = userToUnfollow.followers.filter(id => id !== followerId);
+    follower.following = follower.following ? follower.following.filter(id => id !== userId) : [];
+
+    await Promise.all([
+      userToUnfollow.save(),
+      follower.save()
+    ]);
+
+    console.log('✅ User unfollowed successfully');
+    res.json({ 
+      message: 'User unfollowed successfully',
+      followersCount: userToUnfollow.followers.length,
+      followingCount: follower.following.length
+    });
+
+  } catch (error) {
+    console.error('❌ Unfollow user error:', error);
+    res.status(500).json({ message: 'Failed to unfollow user' });
+  }
+});
+
+// Get user's followers count and following status
+app.get('/api/users/:userId/follow-status/:viewerId', async (req, res) => {
+  try {
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { userId, viewerId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const followersCount = user.followers ? user.followers.length : 0;
+    const followingCount = user.following ? user.following.length : 0;
+    const isFollowing = viewerId && user.followers ? user.followers.includes(viewerId) : false;
+
+    res.json({
+      followersCount,
+      followingCount,
+      isFollowing
+    });
+
+  } catch (error) {
+    console.error('Get follow status error:', error);
+    res.status(500).json({ message: 'Failed to get follow status' });
+  }
+});
+
+// 3. Edit Post Endpoints - הוסף אחרי ה-FOLLOW SYSTEM:
+
+// ============ EDIT POST ENDPOINTS ============
+// Edit regular recipe
+app.put('/api/recipes/:id', upload.any(), async (req, res) => {
+  try {
+    console.log('✏️ Editing recipe...');
+    
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { id } = req.params;
+    const formData = req.body;
+
+    // בדיקת תקינות ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid recipe ID' });
+    }
+
+    // מציאת הפוסט
+    const recipe = await Recipe.findById(id);
+    if (!recipe) {
+      return res.status(404).json({ message: 'Recipe not found' });
+    }
+
+    // בדיקת הרשאות - רק יוצר הפוסט יכול לערוך
+    if (recipe.userId !== formData.userId) {
+      return res.status(403).json({ message: 'Permission denied' });
+    }
+
+    // טיפול בתמונה חדשה
+    let imageData = recipe.image; // שמור את התמונה הקיימת כברירת מחדל
+    
+    if (req.files && req.files.length > 0) {
+      const imageFile = req.files.find(file => 
+        file.fieldname === 'image' || 
+        file.mimetype.startsWith('image/')
+      );
+      
+      if (imageFile) {
+        const base64Image = imageFile.buffer.toString('base64');
+        imageData = `data:${imageFile.mimetype};base64,${base64Image}`;
+        console.log('New image uploaded for recipe edit');
+      }
+    } else if (formData.image && formData.image !== recipe.image) {
+      imageData = formData.image;
+    }
+
+    // עדכון הנתונים
+    const updateData = {
+      title: formData.title?.trim() || recipe.title,
+      description: formData.description || recipe.description,
+      ingredients: formData.ingredients || recipe.ingredients,
+      instructions: formData.instructions || recipe.instructions,
+      category: formData.category || recipe.category,
+      meatType: formData.meatType || recipe.meatType,
+      prepTime: parseInt(formData.prepTime) || recipe.prepTime,
+      servings: parseInt(formData.servings) || recipe.servings,
+      image: imageData,
+      updatedAt: new Date()
+    };
+
+    const updatedRecipe = await Recipe.findByIdAndUpdate(id, updateData, { new: true });
+    
+    // החזרת המתכון עם נתוני המשתמש
+    const user = await User.findById(updatedRecipe.userId);
+    const enrichedRecipe = {
+      ...updatedRecipe.toObject(),
+      userName: user ? user.fullName : 'Unknown User',
+      userAvatar: user ? user.avatar : null,
+      userBio: user ? user.bio : null
+    };
+
+    console.log('✅ Recipe edited successfully');
+    res.json(enrichedRecipe);
+
+  } catch (error) {
+    console.error('❌ Edit recipe error:', error);
+    res.status(500).json({ message: 'Failed to edit recipe' });
+  }
+});
+
+// Edit group post
+app.put('/api/groups/:groupId/posts/:postId', upload.any(), async (req, res) => {
+  try {
+    console.log('✏️ Editing group post...');
+    
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { groupId, postId } = req.params;
+    const formData = req.body;
+
+    // בדיקת תקינות IDs
+    if (!mongoose.Types.ObjectId.isValid(groupId) || !mongoose.Types.ObjectId.isValid(postId)) {
+      return res.status(400).json({ message: 'Invalid group or post ID' });
+    }
+
+    // בדיקה שהקבוצה קיימת
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: 'Group not found' });
+    }
+
+    // מציאת הפוסט
+    const post = await GroupPost.findById(postId);
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    // בדיקה שהפוסט שייך לקבוצה
+    if (post.groupId !== groupId) {
+      return res.status(400).json({ message: 'Post does not belong to this group' });
+    }
+
+    // בדיקת הרשאות - יוצר הפוסט או אדמין של הקבוצה
+    const isPostOwner = post.userId === formData.userId;
+    const isGroupAdmin = group.members.some(member => 
+      member.userId === formData.userId && member.role === 'admin'
+    );
+    const isGroupCreator = group.creatorId === formData.userId;
+
+    if (!isPostOwner && !isGroupAdmin && !isGroupCreator) {
+      return res.status(403).json({ message: 'Permission denied' });
+    }
+
+    // טיפול בתמונה חדשה
+    let imageData = post.image; // שמור את התמונה הקיימת כברירת מחדל
+    
+    if (req.files && req.files.length > 0) {
+      const imageFile = req.files.find(file => 
+        file.fieldname === 'image' || 
+        file.mimetype.startsWith('image/')
+      );
+      
+      if (imageFile) {
+        const base64Image = imageFile.buffer.toString('base64');
+        imageData = `data:${imageFile.mimetype};base64,${base64Image}`;
+        console.log('New image uploaded for group post edit');
+      }
+    } else if (formData.image && formData.image !== post.image) {
+      imageData = formData.image;
+    }
+
+    // עדכון הנתונים
+    const updateData = {
+      title: formData.title?.trim() || post.title,
+      description: formData.description || post.description,
+      ingredients: formData.ingredients || post.ingredients,
+      instructions: formData.instructions || post.instructions,
+      category: formData.category || post.category,
+      meatType: formData.meatType || post.meatType,
+      prepTime: parseInt(formData.prepTime) || post.prepTime,
+      servings: parseInt(formData.servings) || post.servings,
+      image: imageData,
+      updatedAt: new Date()
+    };
+
+    const updatedPost = await GroupPost.findByIdAndUpdate(postId, updateData, { new: true });
+    
+    // החזרת הפוסט עם נתוני המשתמש והקבוצה
+    const user = await User.findById(updatedPost.userId);
+    const enrichedPost = {
+      ...updatedPost.toObject(),
+      userName: user ? user.fullName : 'Unknown User',
+      userAvatar: user ? user.avatar : null,
+      userBio: user ? user.bio : null,
+      groupName: group.name
+    };
+
+    console.log('✅ Group post edited successfully');
+    res.json(enrichedPost);
+
+  } catch (error) {
+    console.error('❌ Edit group post error:', error);
+    res.status(500).json({ message: 'Failed to edit group post' });
+  }
+});
+
 // Profile routes - עדכון פרופיל משתמש (מספר endpoints לתאימות)
 
 // Helper function לעדכון פרופיל
@@ -983,7 +1861,7 @@ app.put('/api/user/change-password', async (req, res) => {
   }
 });
 
-app.get('/api/user/profile/:userId', async (req, res) => {
+app.get('/api/user/profile/:userId', async (req, res) => {
   try {
     if (!isMongoConnected()) {
       return res.status(503).json({ message: 'Database not available' });
@@ -1188,7 +2066,7 @@ app.get('/api/recipes/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/recipes/:id', async (req, res) => {
+app.delete('/api/recipes/:id', async (req, res) => {
   try {
     if (!isMongoConnected()) {
       return res.status(503).json({ message: 'Database not available' });

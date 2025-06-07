@@ -5,6 +5,15 @@ import axios from 'axios';
 class GroupService {
   constructor() {
     this.baseURL = 'http://192.168.1.222:3000/api'; // עדכן לפי הכתובת שלך
+    
+    // הגדרת axios עם timeout ארוך יותר
+    this.axiosInstance = axios.create({
+      baseURL: this.baseURL,
+      timeout: 30000, // 30 שניות
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
   }
 
   // Create new group
@@ -34,10 +43,11 @@ class GroupService {
         });
       }
 
-      const response = await axios.post(`${this.baseURL}/groups`, formData, {
+      const response = await this.axiosInstance.post('/groups', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        timeout: 30000, // 30 שניות למעלה תמונות
       });
 
       console.log('✅ Group created successfully');
@@ -48,6 +58,14 @@ class GroupService {
       
     } catch (error) {
       console.error('❌ Create group error:', error);
+      
+      if (error.code === 'ECONNABORTED') {
+        return {
+          success: false,
+          message: 'Request timeout - please check your connection and try again'
+        };
+      }
+      
       return {
         success: false,
         message: error.response?.data?.message || error.message
@@ -61,7 +79,11 @@ class GroupService {
       console.log('🔄 Fetching groups...');
       
       const params = userId ? { userId } : {};
-      const response = await axios.get(`${this.baseURL}/groups`, { params });
+      
+      const response = await this.axiosInstance.get('/groups', { 
+        params,
+        timeout: 15000 // 15 שניות
+      });
 
       console.log('✅ Groups fetched successfully:', response.data.length);
       return {
@@ -71,6 +93,14 @@ class GroupService {
       
     } catch (error) {
       console.error('❌ Fetch groups error:', error);
+      
+      if (error.code === 'ECONNABORTED') {
+        return {
+          success: false,
+          message: 'Connection timeout - please check your network and try again'
+        };
+      }
+      
       return {
         success: false,
         message: error.response?.data?.message || error.message
@@ -196,51 +226,64 @@ class GroupService {
   }
 
   // Update group (admin only)
-  async updateGroup(groupId, groupData, imageUri = null) {
+  async updateGroupPost(groupId, postId, updateData, imageUri = null) {
     try {
-      console.log('🔄 Updating group...');
-      
-      const formData = new FormData();
-      
-      // הוספת נתוני הקבוצה המעודכנים
-      if (groupData.name) formData.append('name', groupData.name);
-      if (groupData.description !== undefined) formData.append('description', groupData.description);
-      if (groupData.category) formData.append('category', groupData.category);
-      if (groupData.rules !== undefined) formData.append('rules', groupData.rules);
-      if (groupData.isPrivate !== undefined) formData.append('isPrivate', groupData.isPrivate.toString());
-      if (groupData.allowMemberPosts !== undefined) formData.append('allowMemberPosts', groupData.allowMemberPosts.toString());
-      if (groupData.requireApproval !== undefined) formData.append('requireApproval', groupData.requireApproval.toString());
-      if (groupData.allowInvites !== undefined) formData.append('allowInvites', groupData.allowInvites.toString());
-      
-      // הוספת תמונה חדשה אם יש
-      if (imageUri) {
+        console.log('🔄 Updating group post...');
+        
+        const formData = new FormData();
+        
+        // הוספת נתוני הפוסט המעודכנים
+        formData.append('title', updateData.title);
+        formData.append('description', updateData.description || '');
+        formData.append('ingredients', updateData.ingredients || '');
+        formData.append('instructions', updateData.instructions || '');
+        formData.append('category', updateData.category || 'General');
+        formData.append('meatType', updateData.meatType || 'Mixed');
+        formData.append('prepTime', updateData.prepTime?.toString() || '0');
+        formData.append('servings', updateData.servings?.toString() || '1');
+        formData.append('userId', updateData.userId);
+
+        // אם יש תמונה חדשה
+        if (imageUri) {
         formData.append('image', {
-          uri: imageUri,
-          type: 'image/jpeg',
-          name: 'group-image.jpg',
+            uri: imageUri,
+            type: 'image/jpeg',
+            name: 'recipe-image.jpg',
         });
-      }
+        } else if (updateData.image) {
+        // שמירת התמונה הקיימת
+        formData.append('image', updateData.image);
+        }
 
-      const response = await axios.put(`${this.baseURL}/groups/${groupId}`, formData, {
+        const response = await this.axiosInstance.put(`/groups/${groupId}/posts/${postId}`, formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+            'Content-Type': 'multipart/form-data',
         },
-      });
+        timeout: 30000,
+        });
 
-      console.log('✅ Group updated successfully');
-      return {
+        console.log('✅ Group post updated successfully');
+        return {
         success: true,
         data: response.data
-      };
-      
+        };
+        
     } catch (error) {
-      console.error('❌ Update group error:', error);
-      return {
+        console.error('❌ Update group post error:', error);
+        
+        if (error.code === 'ECONNABORTED') {
+        return {
+            success: false,
+            message: 'Request timeout - please check your connection and try again'
+        };
+        }
+        
+        return {
         success: false,
         message: error.response?.data?.message || error.message
-      };
+        };
     }
-  }
+    }
 
   // Check if user is member of group
   isMember(group, userId) {
@@ -266,6 +309,219 @@ class GroupService {
   hasPendingRequest(group, userId) {
     if (!group || !group.pendingRequests || !userId) return false;
     return group.pendingRequests.some(request => request.userId === userId);
+  }
+
+  // ============ GROUP POSTS ============
+
+  // Get posts for a specific group
+  async getGroupPosts(groupId, userId = null) {
+    try {
+      console.log('🔄 Fetching group posts...');
+      
+      const params = userId ? { userId } : {};
+      const response = await this.axiosInstance.get(`/groups/${groupId}/posts`, { 
+        params,
+        timeout: 15000
+      });
+
+      console.log('✅ Group posts fetched successfully:', response.data.length);
+      return {
+        success: true,
+        data: response.data
+      };
+      
+    } catch (error) {
+      console.error('❌ Fetch group posts error:', error);
+      
+      if (error.code === 'ECONNABORTED') {
+        return {
+          success: false,
+          message: 'Connection timeout - please check your network and try again'
+        };
+      }
+      
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message
+      };
+    }
+  }
+
+  // Create post in group
+  async createGroupPost(groupId, postData, imageUri = null) {
+    try {
+      console.log('🔄 Creating group post...');
+      
+      const formData = new FormData();
+      
+      // הוספת נתוני הפוסט
+      formData.append('title', postData.title);
+      formData.append('description', postData.description || '');
+      formData.append('ingredients', postData.ingredients || '');
+      formData.append('instructions', postData.instructions || '');
+      formData.append('category', postData.category || 'General');
+      formData.append('meatType', postData.meatType || 'Mixed');
+      formData.append('prepTime', postData.prepTime?.toString() || '0');
+      formData.append('servings', postData.servings?.toString() || '1');
+      formData.append('userId', postData.userId);
+
+      // הוספת תמונה אם יש
+      if (imageUri) {
+        formData.append('image', {
+          uri: imageUri,
+          type: 'image/jpeg',
+          name: 'recipe-image.jpg',
+        });
+      }
+
+      const response = await this.axiosInstance.post(`/groups/${groupId}/posts`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: 30000,
+      });
+
+      console.log('✅ Group post created successfully');
+      return {
+        success: true,
+        data: response.data
+      };
+      
+    } catch (error) {
+      console.error('❌ Create group post error:', error);
+      
+      if (error.code === 'ECONNABORTED') {
+        return {
+          success: false,
+          message: 'Request timeout - please check your connection and try again'
+        };
+      }
+      
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message
+      };
+    }
+  }
+
+  // Delete group post
+  async deleteGroupPost(groupId, postId, userId) {
+    try {
+      console.log('🔄 Deleting group post...');
+      
+      const response = await this.axiosInstance.delete(`/groups/${groupId}/posts/${postId}`, {
+        data: { userId }
+      });
+
+      console.log('✅ Group post deleted successfully');
+      return {
+        success: true,
+        data: response.data
+      };
+      
+    } catch (error) {
+      console.error('❌ Delete group post error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message
+      };
+    }
+  }
+
+  // ============ GROUP POSTS INTERACTIONS ============
+
+  // Like group post
+  async likeGroupPost(groupId, postId, userId) {
+    try {
+      console.log('👍 Liking group post...');
+      
+      const response = await this.axiosInstance.post(`/groups/${groupId}/posts/${postId}/like`, {
+        userId
+      });
+
+      console.log('✅ Group post liked successfully');
+      return {
+        success: true,
+        data: response.data
+      };
+      
+    } catch (error) {
+      console.error('❌ Like group post error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message
+      };
+    }
+  }
+
+  // Unlike group post
+  async unlikeGroupPost(groupId, postId, userId) {
+    try {
+      console.log('👎 Unliking group post...');
+      
+      const response = await this.axiosInstance.delete(`/groups/${groupId}/posts/${postId}/like`, {
+        data: { userId }
+      });
+
+      console.log('✅ Group post unliked successfully');
+      return {
+        success: true,
+        data: response.data
+      };
+      
+    } catch (error) {
+      console.error('❌ Unlike group post error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message
+      };
+    }
+  }
+
+  // Add comment to group post
+  async addCommentToGroupPost(groupId, postId, commentData) {
+    try {
+      console.log('💬 Adding comment to group post...');
+      
+      const response = await this.axiosInstance.post(`/groups/${groupId}/posts/${postId}/comments`, commentData);
+
+      console.log('✅ Comment added to group post successfully');
+      return {
+        success: true,
+        data: response.data
+      };
+      
+    } catch (error) {
+      console.error('❌ Add comment to group post error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message
+      };
+    }
+  }
+
+  // Delete comment from group post
+  async deleteCommentFromGroupPost(groupId, postId, commentId, userId) {
+    try {
+      console.log('🗑️ Deleting comment from group post...');
+      
+      const response = await this.axiosInstance.delete(`/groups/${groupId}/posts/${postId}/comments/${commentId}`, {
+        data: { userId }
+      });
+
+      console.log('✅ Comment deleted from group post successfully');
+      return {
+        success: true,
+        data: response.data
+      };
+      
+    } catch (error) {
+      console.error('❌ Delete comment from group post error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message
+      };
+    }
   }
 }
 
