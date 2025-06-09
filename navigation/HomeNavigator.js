@@ -10,6 +10,8 @@ import EditPostScreen from '../components/screens/posts/EditPostScreen';
 import SearchScreen from '../components/screens/serach/SearchScreen';
 import ChatListScreen from '../components/screens/Chat/ChatListScreen';
 import ChatConversationScreen from '../components/screens/Chat/ChatConversationScreen';
+import GroupAdminRequestsScreen from '../components/screens/Groups/GroupAdminRequestSceen';
+import UserStatisticsScreen from '../components/screens/Profile/UserStatisticsScreen';
 
 const Stack = createStackNavigator(); 
 
@@ -50,6 +52,17 @@ export default function HomeNavigator() {
         }} 
       />
 
+      {/* 🆕 מסך סטטיסטיקות */}
+      <Stack.Screen 
+        name="UserStatistics" 
+        component={UserStatisticsScreen} 
+        options={{ 
+          headerShown: false,
+          presentation: 'card', // אנימציה רגילה
+          animationEnabled: true
+        }} 
+      />
+
       <Stack.Screen 
         name="EditPost" 
         component={EditPostScreen} 
@@ -73,6 +86,17 @@ export default function HomeNavigator() {
         component={GroupDetailsScreen} 
         options={{ 
           headerShown: false
+        }} 
+      />
+
+      {/* ✅ מסך ניהול בקשות הצטרפות לקבוצה */}
+      <Stack.Screen 
+        name="GroupAdminRequests" 
+        component={GroupAdminRequestsScreen} 
+        options={{ 
+          headerShown: false,
+          presentation: 'card', // אנימציה רגילה
+          animationEnabled: true
         }} 
       />
 

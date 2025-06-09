@@ -111,28 +111,46 @@ const SearchScreen = ({ navigation }) => {
     return [];
   };
 
+  // ✅ עדכון פונקציית חיפוש המשתמשים עם axios
   const searchUsers = async () => {
     try {
-      // TODO: צריך endpoint מיוחד לחיפוש משתמשים
-      // לעת עתה נחזיר מערך ריק
-      return [];
+      console.log('🔍 Searching users for:', searchQuery);
+      
+      // קריאה ל-API endpoint באמצעות userService
+      const users = await userService.searchUsers(searchQuery, currentUser?.id || currentUser?._id);
+      
+      if (users && users.length > 0) {
+        console.log('👥 Found users:', users.length);
+        
+        // המרת הנתונים לפורמט שמתאים לקומפוננטה
+        return users.map(user => ({
+          _id: user.userId,
+          id: user.userId,
+          fullName: user.userName,
+          name: user.userName,
+          email: user.userEmail,
+          avatar: user.userAvatar,
+          bio: user.userBio
+        }));
+      } else {
+        console.log('No users found');
+        return [];
+      }
     } catch (error) {
       console.error('Search users error:', error);
+      // לא נזרוק שגיאה כי אנחנו לא רוצים שהאפליקציה תקרוס
+      return [];
     }
-    return [];
   };
 
   const searchGroups = async () => {
     try {
-      const result = await groupService.getAllGroups(currentUser?.id || currentUser?._id);
+      // ✅ השתמש בפונקציית חיפוש חדשה שכוללת קבוצות פרטיות
+      const result = await groupService.searchGroups(searchQuery, currentUser?.id || currentUser?._id);
+      
       if (result.success) {
-        const query = searchQuery.toLowerCase();
-        return result.data.filter(group => 
-          group.name?.toLowerCase().includes(query) ||
-          group.description?.toLowerCase().includes(query) ||
-          group.category?.toLowerCase().includes(query) ||
-          group.creatorName?.toLowerCase().includes(query)
-        );
+        console.log('🔍 Groups search results:', result.data.length);
+        return result.data;
       }
     } catch (error) {
       console.error('Search groups error:', error);

@@ -58,10 +58,45 @@ const GroupDetailsScreen = ({ route, navigation }) => {
   const isAdmin = group ? groupService.isAdmin(group, currentUser?.id || currentUser?._id) : false;
   const isCreator = group ? groupService.isCreator(group, currentUser?.id || currentUser?._id) : false;
   const hasPendingRequest = group ? groupService.hasPendingRequest(group, currentUser?.id || currentUser?._id) : false;
+  const pendingRequestsCount = group?.pendingRequests?.length || 0;
 
   useEffect(() => {
     loadGroupData();
   }, [groupId]);
+
+  // 🆕 פונקציה לדיבוג הפוסטים
+  const debugGroupPosts = async () => {
+    try {
+      console.log('🐛 DEBUG: Starting post debug for group:', groupId);
+      
+      // בדיקה ישירה של כל הפוסטים
+      const debugResponse = await fetch(`http://192.168.1.222:3000/api/debug/groups/${groupId}/all-posts`);
+      
+      if (debugResponse.ok) {
+        const allPosts = await debugResponse.json();
+        console.log('🐛 DEBUG: All posts in database:', allPosts);
+        console.log('🐛 DEBUG: Posts breakdown:', {
+          total: allPosts.length,
+          approved: allPosts.filter(p => p.isApproved).length,
+          unapproved: allPosts.filter(p => !p.isApproved).length,
+          myPosts: allPosts.filter(p => p.userId === (currentUser?.id || currentUser?._id)).length
+        });
+      } else {
+        console.log('🐛 DEBUG: Could not fetch debug info - endpoint might not exist');
+      }
+      
+      // בדיקת הקריאה הרגילה
+      const normalResponse = await groupService.getGroupPosts(groupId, currentUser?.id || currentUser?._id);
+      console.log('🐛 DEBUG: Normal API response:', {
+        success: normalResponse.success,
+        postsCount: normalResponse.data?.length || 0,
+        message: normalResponse.message
+      });
+      
+    } catch (error) {
+      console.log('🐛 DEBUG: Debug failed:', error);
+    }
+  };
 
   const loadGroupData = useCallback(async () => {
     try {
@@ -71,11 +106,25 @@ const GroupDetailsScreen = ({ route, navigation }) => {
       const groupResult = await groupService.getGroup(groupId);
       if (groupResult.success) {
         setGroup(groupResult.data);
+        console.log('📋 Group loaded:', {
+          name: groupResult.data.name,
+          isPrivate: groupResult.data.isPrivate,
+          allowMemberPosts: groupResult.data.allowMemberPosts,
+          settingsAllowMemberPosts: groupResult.data.settings?.allowMemberPosts,
+          requireApproval: groupResult.data.requireApproval,
+          settingsRequireApproval: groupResult.data.settings?.requireApproval,
+          membersCount: groupResult.data.members?.length,
+          creatorId: groupResult.data.creatorId,
+          currentUserId: currentUser?.id || currentUser?._id
+        });
       } else {
         Alert.alert('Error', groupResult.message || 'Failed to load group');
         return;
       }
 
+      // 🆕 הפעל דיבוג
+      await debugGroupPosts();
+      
       // טען פוסטים של הקבוצה
       await loadGroupPosts();
 
@@ -93,16 +142,24 @@ const GroupDetailsScreen = ({ route, navigation }) => {
       const result = await groupService.getGroupPosts(groupId, currentUser?.id || currentUser?._id);
       
       if (result.success) {
-        const sortedPosts = result.data.sort((a, b) => 
+        const sortedPosts = (result.data || []).sort((a, b) => 
           new Date(b.createdAt) - new Date(a.createdAt)
         );
         
         setGroupPosts(sortedPosts);
+        
+        // ✅ הצג הודעה ידידותית אם זו קבוצה פרטית
+        if (result.message && sortedPosts.length === 0) {
+          console.log('ℹ️  Group posts info:', result.message);
+        }
       } else {
         console.error('Failed to load group posts:', result.message);
+        // ✅ אל תציג שגיאה למשתמש אם זה רק בעיית גישה
+        setGroupPosts([]);
       }
     } catch (error) {
       console.error('Load group posts error:', error);
+      setGroupPosts([]);
     }
   }, [groupId, currentUser]);
 
@@ -111,26 +168,41 @@ const GroupDetailsScreen = ({ route, navigation }) => {
     loadGroupData().finally(() => setRefreshing(false));
   }, [loadGroupData]);
 
+  // ✅ עדכון handleJoinGroup לתמוך בביטול בקשה
   const handleJoinGroup = async () => {
     if (!group) return;
     
     setIsJoining(true);
     try {
-      const result = await groupService.joinGroup(groupId, currentUser?.id || currentUser?._id);
-      
-      if (result.success) {
-        if (result.data.status === 'pending') {
-          Alert.alert('Request Sent', 'Your join request has been sent to the group admin');
+      // ✅ בדוק אם זה ביטול בקשה או בקשה חדשה
+      if (hasPendingRequest) {
+        // ביטול בקשה קיימת
+        const result = await groupService.cancelJoinRequest(groupId, currentUser?.id || currentUser?._id);
+        
+        if (result.success) {
+          Alert.alert('Request Canceled', 'Your join request has been canceled');
+          loadGroupData(); // רענן את הנתונים
         } else {
-          Alert.alert('Success', 'You have joined the group successfully!');
+          Alert.alert('Error', result.message || 'Failed to cancel join request');
         }
-        loadGroupData(); // רענן את הנתונים
       } else {
-        Alert.alert('Error', result.message || 'Failed to join group');
+        // שליחת בקשה חדשה
+        const result = await groupService.joinGroup(groupId, currentUser?.id || currentUser?._id);
+        
+        if (result.success) {
+          if (result.data.status === 'pending') {
+            Alert.alert('Request Sent', 'Your join request has been sent to the group admin');
+          } else {
+            Alert.alert('Success', 'You have joined the group successfully!');
+          }
+          loadGroupData(); // רענן את הנתונים
+        } else {
+          Alert.alert('Error', result.message || 'Failed to join group');
+        }
       }
     } catch (error) {
-      console.error('Join group error:', error);
-      Alert.alert('Error', 'Failed to join group');
+      console.error('Join/Cancel group error:', error);
+      Alert.alert('Error', 'Failed to process request');
     } finally {
       setIsJoining(false);
     }
@@ -250,13 +322,23 @@ const GroupDetailsScreen = ({ route, navigation }) => {
             </Text>
           </View>
 
-          {/* כפתור פעולה */}
+          {/* ✅ כפתור פעולה מעודכן */}
           <View style={styles.actionButtonContainer}>
             {!isMember ? (
               hasPendingRequest ? (
-                <TouchableOpacity style={styles.pendingButton} disabled>
-                  <Ionicons name="time" size={18} color={FLAVORWORLD_COLORS.primary} />
-                  <Text style={styles.pendingButtonText}>Request Pending</Text>
+                <TouchableOpacity 
+                  style={[styles.pendingButton, isJoining && styles.pendingButtonDisabled]}
+                  onPress={handleJoinGroup}
+                  disabled={isJoining}
+                >
+                  {isJoining ? (
+                    <ActivityIndicator size="small" color={FLAVORWORLD_COLORS.primary} />
+                  ) : (
+                    <>
+                      <Ionicons name="close" size={18} color={FLAVORWORLD_COLORS.primary} />
+                      <Text style={styles.pendingButtonText}>Cancel Request</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity 
@@ -299,8 +381,31 @@ const GroupDetailsScreen = ({ route, navigation }) => {
     );
   };
 
+  // ✅ עדכון renderCreatePost לבדוק שני המבנים
   const renderCreatePost = () => {
-    if (!isMember || !group?.settings?.allowMemberPosts) return null;
+    // 🔧 תיקון בדיקת הרשאות - בדוק שני המבנים
+    const allowMemberPosts = group?.settings?.allowMemberPosts ?? group?.allowMemberPosts ?? true;
+    
+    console.log('🔍 renderCreatePost debug:', {
+      isMember,
+      allowMemberPosts,
+      settingsAllowMemberPosts: group?.settings?.allowMemberPosts,
+      directAllowMemberPosts: group?.allowMemberPosts,
+      hasSettings: !!group?.settings,
+      shouldShowCreatePost: isMember && allowMemberPosts
+    });
+
+    if (!isMember) {
+      console.log('❌ Not showing create post: user is not a member');
+      return null;
+    }
+
+    if (!allowMemberPosts) {
+      console.log('❌ Not showing create post: member posts not allowed');
+      return null;
+    }
+
+    console.log('✅ Showing create post section');
 
     return (
       <View style={styles.createPostContainer}>
@@ -370,7 +475,7 @@ const GroupDetailsScreen = ({ route, navigation }) => {
             : 'Join the group to see and share amazing recipes'
           }
         </Text>
-        {isMember && group?.settings?.allowMemberPosts && (
+        {isMember && (group?.settings?.allowMemberPosts ?? group?.allowMemberPosts ?? true) && (
           <TouchableOpacity 
             style={styles.emptyButton}
             onPress={() => setShowCreateModal(true)}
@@ -428,9 +533,49 @@ const GroupDetailsScreen = ({ route, navigation }) => {
           {group.name}
         </Text>
         
-        <TouchableOpacity style={styles.headerMenuButton}>
-          <Ionicons name="ellipsis-horizontal" size={24} color={FLAVORWORLD_COLORS.accent} />
-        </TouchableOpacity>
+        <TouchableOpacity 
+            style={styles.headerMenuButton}
+            onPress={() => {
+                if (isAdmin || isCreator) {
+                // הצג תפריט אדמין
+                Alert.alert(
+                    'Admin Options',
+                    'Choose an option',
+                    [
+                    {
+                        text: `Manage Requests ${pendingRequestsCount > 0 ? `(${pendingRequestsCount})` : ''}`,
+                        onPress: () => navigation.navigate('GroupAdminRequests', { 
+                        groupId: groupId, 
+                        groupName: group?.name 
+                        })
+                    },
+                    {
+                        text: 'Group Settings',
+                        onPress: () => {
+                        // TODO: נווט להגדרות קבוצה
+                        Alert.alert('Coming Soon', 'Group settings feature is coming soon!');
+                        }
+                    },
+                    {
+                        text: 'Cancel',
+                        style: 'cancel'
+                    }
+                    ]
+                );
+                } else {
+                Alert.alert('Info', 'Group options will be available here');
+                }
+            }}
+            >
+            <View style={styles.menuButtonContainer}>
+                <Ionicons name="ellipsis-horizontal" size={24} color={FLAVORWORLD_COLORS.accent} />
+                {(isAdmin || isCreator) && pendingRequestsCount > 0 && (
+                <View style={styles.requestsBadge}>
+                    <Text style={styles.requestsBadgeText}>{pendingRequestsCount}</Text>
+                </View>
+                )}
+            </View>
+            </TouchableOpacity>
       </View>
       
       <FlatList
@@ -494,6 +639,30 @@ const GroupDetailsScreen = ({ route, navigation }) => {
     </SafeAreaView>
   );
 };
+
+const additionalStyles = StyleSheet.create({
+  menuButtonContainer: {
+    position: 'relative',
+  },
+  requestsBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: FLAVORWORLD_COLORS.danger,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: FLAVORWORLD_COLORS.white,
+  },
+  requestsBadgeText: {
+    color: FLAVORWORLD_COLORS.white,
+    fontSize: 10,
+    fontWeight: '600',
+  },
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -705,6 +874,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 6,
   },
+  pendingButtonDisabled: {
+    opacity: 0.6,
+  },
   memberActions: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -862,6 +1034,7 @@ const styles = StyleSheet.create({
   modalPlaceholder: {
     width: 32,
   },
+  ...additionalStyles,
 });
 
 export default GroupDetailsScreen;

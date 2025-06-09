@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../services/AuthContext';
 import { recipeService } from '../../../services/recipeService';
 import { userService } from '../../../services/UserService';
-import { chatService } from '../../../services/chatServices'; // 🆕 מעודכן עם Axios + Follow
+import { chatService } from '../../../services/chatServices';
 import UserAvatar from '../../common/UserAvatar';
 import PostComponent from '../../common/PostComponent';
 
@@ -50,7 +50,7 @@ const ProfileScreen = ({ route, navigation }) => {
   // Follow system state
   const [isFollowing, setIsFollowing] = useState(false);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
-  const [startingChat, setStartingChat] = useState(false); // 🆕 צ'אט
+  const [startingChat, setStartingChat] = useState(false);
 
   const userId = route?.params?.userId || currentUser?.id || currentUser?._id;
   const isOwnProfile = userId === (currentUser?.id || currentUser?._id);
@@ -73,7 +73,6 @@ const ProfileScreen = ({ route, navigation }) => {
           setProfileUser(userResult.data);
           console.log('✅ Loaded other user profile:', userResult.data?.fullName);
           
-          // טען סטטוס המעקב
           await loadFollowStatus();
         } else {
           console.error('❌ Failed to load user profile:', userResult.message);
@@ -93,14 +92,12 @@ const ProfileScreen = ({ route, navigation }) => {
     }
   };
 
-  // ✅ טעינת סטטוס מעקב עם chatService
   const loadFollowStatus = async () => {
     if (isOwnProfile || !currentUser?.id) return;
     
     try {
       console.log('👥 Loading follow status...');
       
-      // השתמש בchatService במקום fetch ישיר
       const result = await chatService.getFollowStatus(
         userId, 
         currentUser.id || currentUser._id
@@ -158,7 +155,6 @@ const ProfileScreen = ({ route, navigation }) => {
     }
   };
 
-  // ✅ עקיבה/ביטול עקיבה עם chatService
   const handleFollowToggle = async () => {
     if (isFollowLoading || !currentUser?.id) return;
     
@@ -166,7 +162,6 @@ const ProfileScreen = ({ route, navigation }) => {
     try {
       console.log('👥 Toggling follow status...');
       
-      // השתמש בchatService במקום fetch ישיר
       const result = await chatService.toggleFollow(
         userId,
         currentUser.id || currentUser._id,
@@ -197,7 +192,6 @@ const ProfileScreen = ({ route, navigation }) => {
     }
   };
 
-  // 🆕 פתיחת צ'אט עם המשתמש
   const handleStartChat = async () => {
     if (isOwnProfile) {
       Alert.alert('Info', 'You cannot chat with yourself!');
@@ -214,11 +208,9 @@ const ProfileScreen = ({ route, navigation }) => {
     try {
       console.log('💬 Starting chat with user:', profileUser);
       
-      // יצור או קבל צ'אט עם המשתמש
       const result = await chatService.getOrCreatePrivateChat(userId);
       
       if (result.success) {
-        // נווט לצ'אט
         navigation.navigate('ChatConversation', {
           chatId: result.data._id,
           otherUser: {
@@ -239,7 +231,6 @@ const ProfileScreen = ({ route, navigation }) => {
     }
   };
 
-  // 🆕 פונקציות רשימות עוקבים
   const handleShowFollowers = async () => {
     try {
       navigation.navigate('FollowersList', {
@@ -250,6 +241,21 @@ const ProfileScreen = ({ route, navigation }) => {
     } catch (error) {
       console.error('❌ Navigate to followers error:', error);
     }
+  };
+
+  // 🆕 פונקציה לפתיחת מסך הסטטיסטיקות
+  const handleViewStatistics = () => {
+    console.log('📊 Navigating to UserStatistics with data:', {
+      currentUser: profileUser,
+      userPosts: userPosts.length,
+      userId: userId
+    });
+    
+    navigation.navigate('UserStatistics', {
+      currentUser: profileUser,
+      userPosts: userPosts,
+      userId: userId
+    });
   };
 
   const handleRefreshData = useCallback(() => {
@@ -292,7 +298,6 @@ const ProfileScreen = ({ route, navigation }) => {
         </Text>
       </View>
 
-      {/* ✅ סטטיסטיקות עם לחיצות */}
       <View style={styles.statsContainer}>
         <TouchableOpacity 
           style={styles.statItem} 
@@ -310,7 +315,6 @@ const ProfileScreen = ({ route, navigation }) => {
           <Text style={styles.statLabel}>Likes</Text>
         </TouchableOpacity>
         
-        {/* 🆕 עוקבים clickable */}
         <TouchableOpacity 
           style={styles.statItem} 
           onPress={handleShowFollowers}
@@ -334,7 +338,6 @@ const ProfileScreen = ({ route, navigation }) => {
           </>
         ) : (
           <>
-            {/* 🆕 כפתור צ'אט מעוצב */}
             <TouchableOpacity 
               style={[styles.chatButton, startingChat && styles.buttonDisabled]} 
               onPress={handleStartChat}
@@ -378,7 +381,7 @@ const ProfileScreen = ({ route, navigation }) => {
         )}
       </View>
 
-      {/* Quick Actions - רק בפרופיל שלי */}
+      {/* Quick Actions - עם כפתור סטטיסטיקות מעודכן */}
       {isOwnProfile && (
         <View style={styles.quickActions}>
           <TouchableOpacity style={styles.quickActionItem} onPress={handleMyGroups}>
@@ -389,7 +392,6 @@ const ProfileScreen = ({ route, navigation }) => {
             <Ionicons name="chevron-forward" size={16} color={FLAVORWORLD_COLORS.textLight} />
           </TouchableOpacity>
 
-          {/* 🆕 הוסף לינק לצ'אטים בפרופיל שלי */}
           <TouchableOpacity 
             style={styles.quickActionItem} 
             onPress={() => navigation.navigate('ChatList')}
@@ -401,11 +403,15 @@ const ProfileScreen = ({ route, navigation }) => {
             <Ionicons name="chevron-forward" size={16} color={FLAVORWORLD_COLORS.textLight} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.quickActionItem}>
+          {/* 🆕 כפתור סטטיסטיקות במקום מתכונים שמורים */}
+          <TouchableOpacity 
+            style={styles.quickActionItem} 
+            onPress={handleViewStatistics}
+          >
             <View style={styles.quickActionIcon}>
-              <Ionicons name="bookmark" size={20} color={FLAVORWORLD_COLORS.primary} />
+              <Ionicons name="analytics" size={20} color={FLAVORWORLD_COLORS.accent} />
             </View>
-            <Text style={styles.quickActionText}>Saved Recipes</Text>
+            <Text style={styles.quickActionText}>My Statistics</Text>
             <Ionicons name="chevron-forward" size={16} color={FLAVORWORLD_COLORS.textLight} />
           </TouchableOpacity>
         </View>
@@ -498,7 +504,6 @@ const ProfileScreen = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton} 
@@ -511,7 +516,6 @@ const ProfileScreen = ({ route, navigation }) => {
           {isOwnProfile ? 'My Profile' : profileUser?.fullName || 'Profile'}
         </Text>
         
-        {/* 🆕 הוסף כפתור צ'אט בהדר אם זה לא הפרופיל שלי */}
         <View style={styles.headerRight}>
           {!isOwnProfile && (
             <TouchableOpacity 
@@ -685,7 +689,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: FLAVORWORLD_COLORS.border,
   },
-  // 🆕 עיצוב כפתור צ'אט
   chatButton: {
     flexDirection: 'row',
     alignItems: 'center',

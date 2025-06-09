@@ -133,7 +133,7 @@ const RegisterScreen = ({ navigation }) => {
         Alert.alert(
           'Welcome to FlavorWorld! 🍳', 
           'Registration completed successfully!', 
-          [{ text: 'Start Cooking!', onPress: () => navigation.navigate('Home') }]
+          [{ text: 'Start Cooking!'}]
         );
       } else {
         Alert.alert('Registration Failed', result.message);

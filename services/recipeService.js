@@ -3,7 +3,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_BASE_URL = 'http://192.168.1.222:3000/api'; 
 
-
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -182,14 +181,16 @@ export const recipeService = {
     }
   },
 
-  async updateRecipe(recipeId, updateData, imageUri = null) {
+  // 🔧 תיקון פונקציית updateRecipe
+  updateRecipe: async (recipeId, updateData, imageUri = null) => {
     try {
-      console.log('🔄 Updating recipe...');
+      console.log('🔄 Updating recipe...', recipeId);
+      console.log('📝 Update data:', updateData);
       
       const formData = new FormData();
       
       // הוספת נתוני המתכון המעודכנים
-      formData.append('title', updateData.title);
+      formData.append('title', updateData.title || '');
       formData.append('description', updateData.description || '');
       formData.append('ingredients', updateData.ingredients || '');
       formData.append('instructions', updateData.instructions || '');
@@ -197,44 +198,60 @@ export const recipeService = {
       formData.append('meatType', updateData.meatType || 'Mixed');
       formData.append('prepTime', updateData.prepTime?.toString() || '0');
       formData.append('servings', updateData.servings?.toString() || '1');
-      formData.append('userId', updateData.userId);
+      formData.append('userId', updateData.userId || '');
 
-      // אם יש תמונה חדשה
+      // טיפול בתמונה
       if (imageUri) {
+        console.log('📷 Adding new image to update');
         formData.append('image', {
           uri: imageUri,
           type: 'image/jpeg',
           name: 'recipe-image.jpg',
         });
       } else if (updateData.image) {
-        // שמירת התמונה הקיימת
+        console.log('📷 Keeping existing image');
         formData.append('image', updateData.image);
       }
 
-      const response = await fetch(`${this.baseURL}/recipes/${recipeId}`, {
-        method: 'PUT',
-        body: formData,
+      // 🔧 השתמש ב-api (axios) במקום fetch
+      const response = await api.put(`/recipes/${recipeId}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        timeout: 120000, // 2 דקות לעדכון
+        onUploadProgress: (progressEvent) => {
+          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          console.log(`📊 Update progress: ${progress}%`);
+        }
       });
 
-      const result = await response.json();
-      
-      if (response.ok) {
-        console.log('✅ Recipe updated successfully');
-        return {
-          success: true,
-          data: result
-        };
-      } else {
-        throw new Error(result.message || 'Failed to update recipe');
-      }
+      console.log('✅ Recipe updated successfully');
+      return {
+        success: true,
+        data: response.data
+      };
+
     } catch (error) {
       console.error('❌ Update recipe error:', error);
+      
+      let errorMessage = 'Failed to update recipe';
+      
+      if (error.response) {
+        console.error('Server error response:', error.response.data);
+        errorMessage = error.response.data?.message || `Server error: ${error.response.status}`;
+      } else if (error.request) {
+        console.error('No response from server');
+        errorMessage = 'No response from server. Check your connection.';
+      } else if (error.code === 'ECONNABORTED') {
+        errorMessage = 'Update took too long. Please try again.';
+      } else {
+        errorMessage = error.message || 'Unknown error occurred';
+      }
+      
       return {
         success: false,
-        message: error.message
+        message: errorMessage,
+        details: error.response?.data
       };
     }
   },

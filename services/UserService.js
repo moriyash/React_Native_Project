@@ -1,10 +1,50 @@
+// הוסף את הפונקציה הזו ל-UserService שלך
+
 // services/UserService.js
+import axios from 'axios';
+
 class UserService {
   constructor() {
-    this.baseURL = 'http://192.168.1.222:3000/api'; // עדכן לפי הכתובת שלך
+    this.baseURL = 'http://192.168.1.222:3000'; // ללא /api כי נוסיף אותו בקריאות
   }
 
-  // Upload avatar image
+  // פונקציה חדשה לחיפוש משתמשים
+  async searchUsers(query, currentUserId = 'temp-user-id') {
+    try {
+      console.log('🔍 UserService: Searching users for:', query);
+      
+      const response = await axios.get(`${this.baseURL}/api/users/search`, {
+        params: { q: query },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': currentUserId,
+        },
+        timeout: 10000, // 10 שניות timeout
+      });
+
+      console.log('✅ UserService: Search successful, found:', response.data.length, 'users');
+      return response.data;
+      
+    } catch (error) {
+      console.error('❌ UserService: Search users error:', error);
+      
+      if (error.response) {
+        // השרת החזיר שגיאה
+        console.error('Response error:', error.response.status, error.response.data);
+      } else if (error.request) {
+        // הבקשה נשלחה אבל לא התקבלה תשובה
+        console.error('No response received:', error.request);
+      } else {
+        // משהו אחר השתבש
+        console.error('Request setup error:', error.message);
+      }
+      
+      // החזר מערך ריק במקום לזרוק שגיאה כדי שהאפליקציה לא תקרוס
+      return [];
+    }
+  }
+
+  // Upload avatar image - עדכון לaxios
   async updateAvatar(imageUri) {
     try {
       console.log('🔄 Uploading avatar...');
@@ -17,34 +57,28 @@ class UserService {
 
       // נסה כמה endpoints שונים
       const endpoints = [
-        '/upload/avatar',
-        '/user/upload-avatar', 
-        '/auth/avatar'
+        '/api/upload/avatar',
+        '/api/user/upload-avatar', 
+        '/api/auth/avatar'
       ];
 
       for (const endpoint of endpoints) {
         try {
           console.log(`🔄 Trying endpoint: ${endpoint}`);
           
-          const response = await fetch(`${this.baseURL}${endpoint}`, {
-            method: 'POST',
-            body: formData,
+          const response = await axios.post(`${this.baseURL}${endpoint}`, formData, {
             headers: {
               'Content-Type': 'multipart/form-data',
             },
+            timeout: 30000, // 30 שניות לאップלוד
           });
 
-          const result = await response.json();
-          
-          if (response.ok && result.success) {
+          if (response.data.success) {
             console.log('✅ Avatar uploaded successfully via:', endpoint);
             return {
               success: true,
-              data: result
+              data: response.data
             };
-          } else {
-            console.log(`❌ Endpoint ${endpoint} failed:`, result);
-            continue;
           }
         } catch (error) {
           console.log(`❌ Endpoint ${endpoint} error:`, error.message);
@@ -63,41 +97,36 @@ class UserService {
     }
   }
 
-  // Update user profile
+  // Update user profile - עדכון לaxios
   async updateProfile(profileData) {
     try {
       console.log('🔄 Updating profile...');
       
       const endpoints = [
-        { url: '/auth/update-profile', method: 'PUT' },
-        { url: '/auth/profile', method: 'PATCH' },
-        { url: '/user/profile', method: 'PUT' }
+        { url: '/api/auth/update-profile', method: 'put' },
+        { url: '/api/auth/profile', method: 'patch' },
+        { url: '/api/user/profile', method: 'put' }
       ];
 
       for (const endpoint of endpoints) {
         try {
           console.log(`🔄 Trying endpoint: ${endpoint.url}`);
           
-          const response = await fetch(`${this.baseURL}${endpoint.url}`, {
+          const response = await axios({
             method: endpoint.method,
+            url: `${this.baseURL}${endpoint.url}`,
+            data: profileData,
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify(profileData),
+            timeout: 10000,
           });
 
-          const result = await response.json();
-          
-          if (response.ok) {
-            console.log('✅ Profile updated successfully via:', endpoint.url);
-            return {
-              success: true,
-              data: result
-            };
-          } else {
-            console.log(`❌ Endpoint ${endpoint.url} failed:`, result);
-            continue;
-          }
+          console.log('✅ Profile updated successfully via:', endpoint.url);
+          return {
+            success: true,
+            data: response.data
+          };
         } catch (error) {
           console.log(`❌ Endpoint ${endpoint.url} error:`, error.message);
           continue;
@@ -115,50 +144,40 @@ class UserService {
     }
   }
 
-  // Change password
+  // Change password - עדכון לaxios
   async changePassword(passwordData) {
     try {
       console.log('🔄 Changing password...');
       
       const endpoints = [
-        { url: '/auth/change-password', method: 'PUT' },
-        { url: '/auth/change-password', method: 'PATCH' },
-        { url: '/user/change-password', method: 'PUT' }
+        { url: '/api/auth/change-password', method: 'put' },
+        { url: '/api/auth/change-password', method: 'patch' },
+        { url: '/api/user/change-password', method: 'put' }
       ];
 
       for (const endpoint of endpoints) {
         try {
           console.log(`🔄 Trying password endpoint: ${endpoint.url}`);
           
-          const response = await fetch(`${this.baseURL}${endpoint.url}`, {
+          const response = await axios({
             method: endpoint.method,
+            url: `${this.baseURL}${endpoint.url}`,
+            data: passwordData,
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify(passwordData),
+            timeout: 10000,
           });
 
-          const result = await response.json();
-          
-          if (response.ok) {
-            console.log('✅ Password changed successfully via:', endpoint.url);
-            return {
-              success: true,
-              data: result
-            };
-          } else {
-            console.log(`❌ Password endpoint ${endpoint.url} failed:`, result);
-            
-            // אם זה שגיאת סיסמה שגויה, תזרוק אותה מיד
-            if (response.status === 400 && result.message) {
-              throw new Error(result.message);
-            }
-            continue;
-          }
+          console.log('✅ Password changed successfully via:', endpoint.url);
+          return {
+            success: true,
+            data: response.data
+          };
         } catch (error) {
           // אם זה שגיאת validation או סיסמה שגויה, תזרוק מיד
-          if (error.message.includes('password') || error.message.includes('Password')) {
-            throw error;
+          if (error.response && error.response.status === 400) {
+            throw new Error(error.response.data.message || 'Invalid password');
           }
           
           console.log(`❌ Password endpoint ${endpoint.url} error:`, error.message);
@@ -177,31 +196,25 @@ class UserService {
     }
   }
 
-  // Get user profile
+  // Get user profile - עדכון לaxios
   async getUserProfile(userId) {
     try {
-      const response = await fetch(`${this.baseURL}/user/profile/${userId}`, {
-        method: 'GET',
+      const response = await axios.get(`${this.baseURL}/api/user/profile/${userId}`, {
         headers: {
           'Content-Type': 'application/json',
         },
+        timeout: 10000,
       });
 
-      const result = await response.json();
-      
-      if (response.ok) {
-        return {
-          success: true,
-          data: result.user
-        };
-      } else {
-        throw new Error(result.message || 'Failed to get user profile');
-      }
+      return {
+        success: true,
+        data: response.data.user
+      };
     } catch (error) {
       console.error('❌ Get user profile error:', error);
       return {
         success: false,
-        message: error.message
+        message: error.response?.data?.message || error.message
       };
     }
   }
