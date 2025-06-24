@@ -1,15 +1,12 @@
-// services/GroupService.js
-
 import axios from 'axios';
 
 class GroupService {
   constructor() {
-    this.baseURL = 'http://192.168.1.222:3000/api'; // עדכן לפי הכתובת שלך
+    this.baseURL = 'http://192.168.1.222:3000/api';
     
-    // הגדרת axios עם timeout ארוך יותר
     this.axiosInstance = axios.create({
       baseURL: this.baseURL,
-      timeout: 30000, // 30 שניות
+      timeout: 30000,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -19,11 +16,10 @@ class GroupService {
   // Create new group
   async createGroup(groupData, imageUri = null) {
     try {
-      console.log('🔄 Creating group...');
+      console.log('Creating group');
       
       const formData = new FormData();
       
-      // הוספת נתוני הקבוצה
       formData.append('name', groupData.name);
       formData.append('description', groupData.description || '');
       formData.append('category', groupData.category || 'General');
@@ -34,7 +30,6 @@ class GroupService {
       formData.append('requireApproval', groupData.requireApproval.toString());
       formData.append('allowInvites', groupData.allowInvites.toString());
 
-      // הוספת תמונה אם יש
       if (imageUri) {
         formData.append('image', {
           uri: imageUri,
@@ -47,17 +42,17 @@ class GroupService {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
-        timeout: 30000, // 30 שניות למעלה תמונות
+        timeout: 30000,
       });
 
-      console.log('✅ Group created successfully');
+      console.log('Group created successfully');
       return {
         success: true,
         data: response.data
       };
       
     } catch (error) {
-      console.error('❌ Create group error:', error);
+      console.error('Create group error occurred');
       
       if (error.code === 'ECONNABORTED') {
         return {
@@ -73,10 +68,10 @@ class GroupService {
     }
   }
 
-  // ✅ Get all groups - עדכון לתמוך בחיפוש
+  // Get all groups
   async getAllGroups(userId = null, includePrivateForSearch = false) {
     try {
-      console.log('🔄 Fetching groups...');
+      console.log('Fetching groups');
       
       const params = {};
       if (userId) params.userId = userId;
@@ -84,17 +79,17 @@ class GroupService {
       
       const response = await this.axiosInstance.get('/groups', { 
         params,
-        timeout: 15000 // 15 שניות
+        timeout: 15000
       });
 
-      console.log('✅ Groups fetched successfully:', response.data.length);
+      console.log('Groups fetched successfully');
       return {
         success: true,
         data: response.data
       };
       
     } catch (error) {
-      console.error('❌ Fetch groups error:', error);
+      console.error('Fetch groups error occurred');
       
       if (error.code === 'ECONNABORTED') {
         return {
@@ -110,33 +105,31 @@ class GroupService {
     }
   }
 
-  // ✅ פונקציה נפרדת לחיפוש קבוצות - עם fallback
+  // Search groups
   async searchGroups(query, userId = null) {
     try {
-      console.log('🔍 Searching groups for:', query);
+      console.log('Searching groups');
       
       const params = { 
         q: query,
-        includePrivate: 'true' // כלול קבוצות פרטיות בחיפוש
+        includePrivate: 'true'
       };
       if (userId) params.userId = userId;
       
       try {
-        // נסה endpoint החיפוש הייעודי
         const response = await this.axiosInstance.get('/groups/search', { 
           params,
           timeout: 15000
         });
 
-        console.log('✅ Groups search completed:', response.data.length, 'results');
+        console.log('Groups search completed');
         return {
           success: true,
           data: response.data
         };
       } catch (searchError) {
-        console.log('❌ Search endpoint failed, falling back to getAllGroups with filter');
+        console.log('Search endpoint failed, using fallback');
         
-        // Fallback: השתמש ב-getAllGroups עם סינון מקומי
         const allGroupsParams = { includePrivate: 'true' };
         if (userId) allGroupsParams.userId = userId;
         
@@ -145,7 +138,6 @@ class GroupService {
           timeout: 15000
         });
 
-        // סנן מקומית
         const filtered = response.data.filter(group => {
           const searchTerm = query.toLowerCase();
           return (
@@ -156,7 +148,7 @@ class GroupService {
           );
         });
 
-        console.log('✅ Fallback search completed:', filtered.length, 'results');
+        console.log('Fallback search completed');
         return {
           success: true,
           data: filtered
@@ -164,7 +156,7 @@ class GroupService {
       }
       
     } catch (error) {
-      console.error('❌ Search groups error:', error);
+      console.error('Search groups error occurred');
       return {
         success: false,
         message: error.response?.data?.message || error.message
@@ -172,21 +164,21 @@ class GroupService {
     }
   }
 
-  // ✅ Get single group with details - תיקון לaxiosInstance
+  // Get single group with details
   async getGroup(groupId) {
     try {
-      console.log('🔄 Fetching group details for ID:', groupId);
+      console.log('Fetching group details');
       
       const response = await this.axiosInstance.get(`/groups/${groupId}`);
 
-      console.log('✅ Group details fetched successfully:', response.data.name);
+      console.log('Group details fetched successfully');
       return {
         success: true,
         data: response.data
       };
       
     } catch (error) {
-      console.error('❌ Fetch group details error:', error);
+      console.error('Fetch group details error occurred');
       return {
         success: false,
         message: error.response?.data?.message || error.message
@@ -194,23 +186,23 @@ class GroupService {
     }
   }
 
-  // ✅ Join group - תיקון לaxiosInstance
+  // Join group
   async joinGroup(groupId, userId) {
     try {
-      console.log('🔄 Joining group...');
+      console.log('Joining group');
       
       const response = await this.axiosInstance.post(`/groups/${groupId}/join`, {
         userId
       });
 
-      console.log('✅ Join request sent successfully');
+      console.log('Join request sent successfully');
       return {
         success: true,
         data: response.data
       };
       
     } catch (error) {
-      console.error('❌ Join group error:', error);
+      console.error('Join group error occurred');
       return {
         success: false,
         message: error.response?.data?.message || error.message
@@ -218,23 +210,23 @@ class GroupService {
     }
   }
 
-  // ✅ ביטול בקשת הצטרפות לקבוצה - פונקציה חדשה
+  // Cancel join request
   async cancelJoinRequest(groupId, userId) {
     try {
-      console.log('🔄 Canceling join request...');
+      console.log('Canceling join request');
       
       const response = await this.axiosInstance.delete(`/groups/${groupId}/join`, {
         data: { userId }
       });
 
-      console.log('✅ Join request canceled successfully');
+      console.log('Join request canceled successfully');
       return {
         success: true,
         data: response.data
       };
       
     } catch (error) {
-      console.error('❌ Cancel join request error:', error);
+      console.error('Cancel join request error occurred');
       return {
         success: false,
         message: error.response?.data?.message || error.message
@@ -242,24 +234,24 @@ class GroupService {
     }
   }
 
-  // ✅ Handle join request - תיקון לaxiosInstance
+  // Handle join request
   async handleJoinRequest(groupId, userId, action, adminId) {
     try {
-      console.log(`🔄 ${action}ing join request...`);
+      console.log(`${action}ing join request`);
       
       const response = await this.axiosInstance.put(`/groups/${groupId}/requests/${userId}`, {
         action,
         adminId
       });
 
-      console.log(`✅ Join request ${action}ed successfully`);
+      console.log(`Join request ${action}ed successfully`);
       return {
         success: true,
         data: response.data
       };
       
     } catch (error) {
-      console.error(`❌ ${action} join request error:`, error);
+      console.error(`${action} join request error occurred`);
       return {
         success: false,
         message: error.response?.data?.message || error.message
@@ -267,21 +259,21 @@ class GroupService {
     }
   }
 
-  // ✅ Leave group - תיקון לaxiosInstance
+  // Leave group
   async leaveGroup(groupId, userId) {
     try {
-      console.log('🔄 Leaving group...');
+      console.log('Leaving group');
       
       const response = await this.axiosInstance.delete(`/groups/${groupId}/members/${userId}`);
 
-      console.log('✅ Left group successfully');
+      console.log('Left group successfully');
       return {
         success: true,
         data: response.data
       };
       
     } catch (error) {
-      console.error('❌ Leave group error:', error);
+      console.error('Leave group error occurred');
       return {
         success: false,
         message: error.response?.data?.message || error.message
@@ -289,23 +281,47 @@ class GroupService {
     }
   }
 
-  // ✅ Delete group - תיקון לaxiosInstance
+  // 🆕 Remove member from group (admin only)
+  async removeMember(groupId, memberUserId, adminUserId) {
+    try {
+      console.log('Removing member from group');
+      
+      const response = await this.axiosInstance.delete(`/groups/${groupId}/members/${memberUserId}`, {
+        data: { adminId: adminUserId }
+      });
+
+      console.log('Member removed successfully');
+      return {
+        success: true,
+        data: response.data
+      };
+      
+    } catch (error) {
+      console.error('Remove member error occurred');
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message
+      };
+    }
+  }
+
+  // Delete group
   async deleteGroup(groupId, userId) {
     try {
-      console.log('🔄 Deleting group...');
+      console.log('Deleting group');
       
       const response = await this.axiosInstance.delete(`/groups/${groupId}`, {
         data: { userId }
       });
 
-      console.log('✅ Group deleted successfully');
+      console.log('Group deleted successfully');
       return {
         success: true,
         data: response.data
       };
       
     } catch (error) {
-      console.error('❌ Delete group error:', error);
+      console.error('Delete group error occurred');
       return {
         success: false,
         message: error.response?.data?.message || error.message
@@ -316,11 +332,10 @@ class GroupService {
   // Update group post
   async updateGroupPost(groupId, postId, updateData, imageUri = null) {
     try {
-        console.log('🔄 Updating group post...');
+        console.log('Updating group post');
         
         const formData = new FormData();
         
-        // הוספת נתוני הפוסט המעודכנים
         formData.append('title', updateData.title);
         formData.append('description', updateData.description || '');
         formData.append('ingredients', updateData.ingredients || '');
@@ -331,7 +346,6 @@ class GroupService {
         formData.append('servings', updateData.servings?.toString() || '1');
         formData.append('userId', updateData.userId);
 
-        // אם יש תמונה חדשה
         if (imageUri) {
         formData.append('image', {
             uri: imageUri,
@@ -339,7 +353,6 @@ class GroupService {
             name: 'recipe-image.jpg',
         });
         } else if (updateData.image) {
-        // שמירת התמונה הקיימת
         formData.append('image', updateData.image);
         }
 
@@ -350,14 +363,14 @@ class GroupService {
         timeout: 30000,
         });
 
-        console.log('✅ Group post updated successfully');
+        console.log('Group post updated successfully');
         return {
         success: true,
         data: response.data
         };
         
     } catch (error) {
-        console.error('❌ Update group post error:', error);
+        console.error('Update group post error occurred');
         
         if (error.code === 'ECONNABORTED') {
         return {
@@ -373,11 +386,10 @@ class GroupService {
     }
   }
 
-  // ✅ תיקון בדיקות הרשאות - תמיכה ב-string ו-ObjectId
   // Check if user is member of group
   isMember(group, userId) {
     if (!group || !group.members || !userId) {
-      console.log('❌ isMember: Missing data', { group: !!group, members: !!group?.members, userId });
+      console.log('isMember: Missing data');
       return false;
     }
     
@@ -386,20 +398,14 @@ class GroupService {
       return memberId === userId || memberId?.toString() === userId?.toString();
     });
     
-    console.log('🔍 isMember check:', { 
-      userId, 
-      groupId: group._id, 
-      groupName: group.name,
-      isMember, 
-      membersCount: group.members.length 
-    });
+    console.log('isMember check result:', isMember);
     return isMember;
   }
 
   // Check if user is admin of group
   isAdmin(group, userId) {
     if (!group || !group.members || !userId) {
-      console.log('❌ isAdmin: Missing data');
+      console.log('isAdmin: Missing data');
       return false;
     }
     
@@ -409,21 +415,21 @@ class GroupService {
       return (memberId === userId || memberId?.toString() === userId?.toString()) && isAdminRole;
     });
     
-    console.log('🔍 isAdmin check:', { userId, groupId: group._id, isAdmin });
+    console.log('isAdmin check result:', isAdmin);
     return isAdmin;
   }
 
   // Check if user is creator of group
   isCreator(group, userId) {
     if (!group || !userId) {
-      console.log('❌ isCreator: Missing data');
+      console.log('isCreator: Missing data');
       return false;
     }
     
     const creatorId = group.creatorId || group.creator || group.ownerId;
     const isCreator = creatorId === userId || creatorId?.toString() === userId?.toString();
     
-    console.log('🔍 isCreator check:', { userId, creatorId, isCreator });
+    console.log('isCreator check result:', isCreator);
     return isCreator;
   }
 
@@ -438,10 +444,10 @@ class GroupService {
 
   // ============ GROUP POSTS ============
 
-  // Get posts for a specific group - עם טיפול טוב יותר בשגיאות
+  // 🔧 תיקון: Get posts for a specific group - כלול גם פוסטים שמחכים לאישור למשתמש עצמו
   async getGroupPosts(groupId, userId = null) {
     try {
-      console.log('🔄 Fetching group posts for ID:', groupId);
+      console.log('Fetching group posts');
       
       const params = userId ? { userId } : {};
       const response = await this.axiosInstance.get(`/groups/${groupId}/posts`, { 
@@ -449,14 +455,14 @@ class GroupService {
         timeout: 15000
       });
 
-      console.log('✅ Group posts fetched successfully:', response.data.length);
+      console.log('Group posts fetched successfully');
       return {
         success: true,
-        data: response.data || [] // וודא שזה תמיד מערך
+        data: response.data || []
       };
       
     } catch (error) {
-      console.error('❌ Fetch group posts error:', error);
+      console.error('Fetch group posts error occurred');
       
       if (error.code === 'ECONNABORTED') {
         return {
@@ -465,9 +471,8 @@ class GroupService {
         };
       }
 
-      // ✅ אם זה שגיאת גישה לקבוצה פרטית, החזר מערך ריק
       if (error.response?.status === 403) {
-        console.log('⚠️  Access denied to private group, returning empty array');
+        console.log('Access denied to private group, returning empty array');
         return {
           success: true,
           data: [],
@@ -475,9 +480,8 @@ class GroupService {
         };
       }
 
-      // ✅ אם הקבוצה לא נמצאה, החזר מערך ריק
       if (error.response?.status === 404) {
-        console.log('⚠️  Group not found, returning empty array');
+        console.log('Group not found, returning empty array');
         return {
           success: true,
           data: [],
@@ -495,12 +499,10 @@ class GroupService {
   // Create post in group
   async createGroupPost(groupId, postData, imageUri = null) {
     try {
-      console.log('🔄 Creating group post...');
-      console.log('📋 Post data:', { groupId, userId: postData.userId, imageUri: !!imageUri });
+      console.log('Creating group post');
       
       const formData = new FormData();
       
-      // הוספת נתוני הפוסט
       formData.append('title', postData.title);
       formData.append('description', postData.description || '');
       formData.append('ingredients', postData.ingredients || '');
@@ -511,7 +513,6 @@ class GroupService {
       formData.append('servings', postData.servings?.toString() || '1');
       formData.append('userId', postData.userId);
 
-      // הוספת תמונה אם יש
       if (imageUri) {
         formData.append('image', {
           uri: imageUri,
@@ -520,7 +521,7 @@ class GroupService {
         });
       }
 
-      console.log('📤 Sending request to create group post...');
+      console.log('Sending request to create group post');
       const response = await this.axiosInstance.post(`/groups/${groupId}/posts`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -528,14 +529,14 @@ class GroupService {
         timeout: 30000,
       });
 
-      console.log('✅ Group post created successfully:', response.data.message);
+      console.log('Group post created successfully');
       return {
         success: true,
         data: response.data
       };
       
     } catch (error) {
-      console.error('❌ Create group post error:', error);
+      console.error('Create group post error occurred');
       
       if (error.code === 'ECONNABORTED') {
         return {
@@ -544,9 +545,8 @@ class GroupService {
         };
       }
       
-      // הצגת שגיאות מפורטות מהשרת
       if (error.response?.data?.message) {
-        console.log('❌ Server error message:', error.response.data.message);
+        console.log('Server error message received');
         return {
           success: false,
           message: error.response.data.message
@@ -563,20 +563,20 @@ class GroupService {
   // Delete group post
   async deleteGroupPost(groupId, postId, userId) {
     try {
-      console.log('🔄 Deleting group post...');
+      console.log('Deleting group post');
       
       const response = await this.axiosInstance.delete(`/groups/${groupId}/posts/${postId}`, {
         data: { userId }
       });
 
-      console.log('✅ Group post deleted successfully');
+      console.log('Group post deleted successfully');
       return {
         success: true,
         data: response.data
       };
       
     } catch (error) {
-      console.error('❌ Delete group post error:', error);
+      console.error('Delete group post error occurred');
       return {
         success: false,
         message: error.response?.data?.message || error.message
@@ -589,20 +589,20 @@ class GroupService {
   // Like group post
   async likeGroupPost(groupId, postId, userId) {
     try {
-      console.log('👍 Liking group post...');
+      console.log('Liking group post');
       
       const response = await this.axiosInstance.post(`/groups/${groupId}/posts/${postId}/like`, {
         userId
       });
 
-      console.log('✅ Group post liked successfully');
+      console.log('Group post liked successfully');
       return {
         success: true,
         data: response.data
       };
       
     } catch (error) {
-      console.error('❌ Like group post error:', error);
+      console.error('Like group post error occurred');
       return {
         success: false,
         message: error.response?.data?.message || error.message
@@ -613,20 +613,20 @@ class GroupService {
   // Unlike group post
   async unlikeGroupPost(groupId, postId, userId) {
     try {
-      console.log('👎 Unliking group post...');
+      console.log('Unliking group post');
       
       const response = await this.axiosInstance.delete(`/groups/${groupId}/posts/${postId}/like`, {
         data: { userId }
       });
 
-      console.log('✅ Group post unliked successfully');
+      console.log('Group post unliked successfully');
       return {
         success: true,
         data: response.data
       };
       
     } catch (error) {
-      console.error('❌ Unlike group post error:', error);
+      console.error('Unlike group post error occurred');
       return {
         success: false,
         message: error.response?.data?.message || error.message
@@ -637,18 +637,18 @@ class GroupService {
   // Add comment to group post
   async addCommentToGroupPost(groupId, postId, commentData) {
     try {
-      console.log('💬 Adding comment to group post...');
+      console.log('Adding comment to group post');
       
       const response = await this.axiosInstance.post(`/groups/${groupId}/posts/${postId}/comments`, commentData);
 
-      console.log('✅ Comment added to group post successfully');
+      console.log('Comment added to group post successfully');
       return {
         success: true,
         data: response.data
       };
       
     } catch (error) {
-      console.error('❌ Add comment to group post error:', error);
+      console.error('Add comment to group post error occurred');
       return {
         success: false,
         message: error.response?.data?.message || error.message
@@ -659,20 +659,20 @@ class GroupService {
   // Delete comment from group post
   async deleteCommentFromGroupPost(groupId, postId, commentId, userId) {
     try {
-      console.log('🗑️ Deleting comment from group post...');
+      console.log('Deleting comment from group post');
       
       const response = await this.axiosInstance.delete(`/groups/${groupId}/posts/${postId}/comments/${commentId}`, {
         data: { userId }
       });
 
-      console.log('✅ Comment deleted from group post successfully');
+      console.log('Comment deleted from group post successfully');
       return {
         success: true,
         data: response.data
       };
       
     } catch (error) {
-      console.error('❌ Delete comment from group post error:', error);
+      console.error('Delete comment from group post error occurred');
       return {
         success: false,
         message: error.response?.data?.message || error.message

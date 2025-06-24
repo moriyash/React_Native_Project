@@ -34,7 +34,7 @@ const FLAVORWORLD_COLORS = {
 const RECIPE_CATEGORIES = [
   'Asian', 'Italian', 'Mexican', 'Indian', 'Mediterranean', 
   'American', 'French', 'Chinese', 'Japanese', 'Thai', 
-  'Middle Eastern', 'Greek', 'Spanish', 'Korean', 'Vietnamese'
+  'Middle Eastern', 'Greek', 'Spanish', 'Korean', 'Vietnamese', 'Dessert'
 ];
 
 const MEAT_TYPES = [

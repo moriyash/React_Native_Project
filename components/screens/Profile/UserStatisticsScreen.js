@@ -1,5 +1,3 @@
-// components/screens/Profile/UserStatisticsScreen.js
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -71,13 +69,7 @@ const UserStatisticsScreen = ({ route, navigation }) => {
     setLoading(true);
     
     try {
-      console.log('📊 Loading statistics for user:', userId);
-      console.log('📊 User posts available:', userPosts.length);
-      
-      // בדוק איך נראים הפוסטים
-      if (userPosts.length > 0) {
-        console.log('📊 Sample post:', userPosts[0]);
-      }
+      console.log('Loading statistics data');
       
       // עיבוד הנתונים האמיתיים מהמונגו - רק הפוסטים של המשתמש
       const realUserData = statisticsService.processRealUserData(userPosts, userId);
@@ -88,29 +80,28 @@ const UserStatisticsScreen = ({ route, navigation }) => {
         if (followersResult.success && followersResult.data) {
           realUserData.followersGrowth = followersResult.data;
           realUserData.totalFollowers = followersResult.currentFollowersCount || 0;
-          console.log('✅ Got real followers data from server:', followersResult.currentFollowersCount);
+          console.log('Followers data retrieved successfully');
         } else {
-          console.log('⚠️ No followers data available from server');
-          // השאר מערך ריק אם אין נתונים
+          console.log('No followers data available');
           realUserData.followersGrowth = [];
           realUserData.totalFollowers = 0;
         }
       } catch (followersError) {
-        console.log('⚠️ Could not fetch followers data, keeping empty');
+        console.log('Could not fetch followers data');
         realUserData.followersGrowth = [];
         realUserData.totalFollowers = 0;
       }
       
       setStatsData(realUserData);
-      console.log('✅ Statistics loaded successfully:', realUserData);
+      console.log('Statistics loaded successfully');
       
     } catch (error) {
-      console.error('❌ Statistics loading error:', error);
+      console.error('Statistics loading failed');
       
       // גם במקרה של שגיאה, עדיין נציג את הנתונים שיש לנו
       const fallbackData = statisticsService.processRealUserData(userPosts, userId);
       setStatsData(fallbackData);
-      console.log('⚠️ Using fallback data due to error');
+      console.log('Using fallback data');
     } finally {
       setLoading(false);
     }

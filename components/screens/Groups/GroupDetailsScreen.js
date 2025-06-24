@@ -1,5 +1,3 @@
-// components/screens/groups/GroupDetailsScreen.js
-
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -52,6 +50,9 @@ const GroupDetailsScreen = ({ route, navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
+  // 🆕 State עבור מודל חברי הקבוצה
+  const [showMembersModal, setShowMembersModal] = useState(false);
+  const [removingMemberId, setRemovingMemberId] = useState(null);
 
   // נתונים נגזרים
   const isMember = group ? groupService.isMember(group, currentUser?.id || currentUser?._id) : false;
@@ -64,40 +65,6 @@ const GroupDetailsScreen = ({ route, navigation }) => {
     loadGroupData();
   }, [groupId]);
 
-  // 🆕 פונקציה לדיבוג הפוסטים
-  const debugGroupPosts = async () => {
-    try {
-      console.log('🐛 DEBUG: Starting post debug for group:', groupId);
-      
-      // בדיקה ישירה של כל הפוסטים
-      const debugResponse = await fetch(`http://192.168.1.222:3000/api/debug/groups/${groupId}/all-posts`);
-      
-      if (debugResponse.ok) {
-        const allPosts = await debugResponse.json();
-        console.log('🐛 DEBUG: All posts in database:', allPosts);
-        console.log('🐛 DEBUG: Posts breakdown:', {
-          total: allPosts.length,
-          approved: allPosts.filter(p => p.isApproved).length,
-          unapproved: allPosts.filter(p => !p.isApproved).length,
-          myPosts: allPosts.filter(p => p.userId === (currentUser?.id || currentUser?._id)).length
-        });
-      } else {
-        console.log('🐛 DEBUG: Could not fetch debug info - endpoint might not exist');
-      }
-      
-      // בדיקת הקריאה הרגילה
-      const normalResponse = await groupService.getGroupPosts(groupId, currentUser?.id || currentUser?._id);
-      console.log('🐛 DEBUG: Normal API response:', {
-        success: normalResponse.success,
-        postsCount: normalResponse.data?.length || 0,
-        message: normalResponse.message
-      });
-      
-    } catch (error) {
-      console.log('🐛 DEBUG: Debug failed:', error);
-    }
-  };
-
   const loadGroupData = useCallback(async () => {
     try {
       setLoading(true);
@@ -106,30 +73,17 @@ const GroupDetailsScreen = ({ route, navigation }) => {
       const groupResult = await groupService.getGroup(groupId);
       if (groupResult.success) {
         setGroup(groupResult.data);
-        console.log('📋 Group loaded:', {
-          name: groupResult.data.name,
-          isPrivate: groupResult.data.isPrivate,
-          allowMemberPosts: groupResult.data.allowMemberPosts,
-          settingsAllowMemberPosts: groupResult.data.settings?.allowMemberPosts,
-          requireApproval: groupResult.data.requireApproval,
-          settingsRequireApproval: groupResult.data.settings?.requireApproval,
-          membersCount: groupResult.data.members?.length,
-          creatorId: groupResult.data.creatorId,
-          currentUserId: currentUser?.id || currentUser?._id
-        });
+        console.log('Group loaded successfully');
       } else {
         Alert.alert('Error', groupResult.message || 'Failed to load group');
         return;
       }
 
-      // 🆕 הפעל דיבוג
-      await debugGroupPosts();
-      
       // טען פוסטים של הקבוצה
       await loadGroupPosts();
 
     } catch (error) {
-      console.error('Load group data error:', error);
+      console.error('Load group data error occurred');
       Alert.alert('Error', 'Failed to load group data');
     } finally {
       setLoading(false);
@@ -138,7 +92,7 @@ const GroupDetailsScreen = ({ route, navigation }) => {
 
   const loadGroupPosts = useCallback(async () => {
     try {
-      // השתמש ב-API החדש לפוסטים של קבוצה
+      // 🔧 תיקון: התאמת עומס הפוסטים - כלול את כל הפוסטים מאושרים וכאלה שמחכים לאישור
       const result = await groupService.getGroupPosts(groupId, currentUser?.id || currentUser?._id);
       
       if (result.success) {
@@ -147,18 +101,17 @@ const GroupDetailsScreen = ({ route, navigation }) => {
         );
         
         setGroupPosts(sortedPosts);
+        console.log('Group posts loaded successfully');
         
-        // ✅ הצג הודעה ידידותית אם זו קבוצה פרטית
         if (result.message && sortedPosts.length === 0) {
-          console.log('ℹ️  Group posts info:', result.message);
+          console.log('Group posts info:', result.message);
         }
       } else {
-        console.error('Failed to load group posts:', result.message);
-        // ✅ אל תציג שגיאה למשתמש אם זה רק בעיית גישה
+        console.error('Failed to load group posts');
         setGroupPosts([]);
       }
     } catch (error) {
-      console.error('Load group posts error:', error);
+      console.error('Load group posts error occurred');
       setGroupPosts([]);
     }
   }, [groupId, currentUser]);
@@ -168,20 +121,18 @@ const GroupDetailsScreen = ({ route, navigation }) => {
     loadGroupData().finally(() => setRefreshing(false));
   }, [loadGroupData]);
 
-  // ✅ עדכון handleJoinGroup לתמוך בביטול בקשה
   const handleJoinGroup = async () => {
     if (!group) return;
     
     setIsJoining(true);
     try {
-      // ✅ בדוק אם זה ביטול בקשה או בקשה חדשה
       if (hasPendingRequest) {
         // ביטול בקשה קיימת
         const result = await groupService.cancelJoinRequest(groupId, currentUser?.id || currentUser?._id);
         
         if (result.success) {
           Alert.alert('Request Canceled', 'Your join request has been canceled');
-          loadGroupData(); // רענן את הנתונים
+          loadGroupData();
         } else {
           Alert.alert('Error', result.message || 'Failed to cancel join request');
         }
@@ -195,13 +146,13 @@ const GroupDetailsScreen = ({ route, navigation }) => {
           } else {
             Alert.alert('Success', 'You have joined the group successfully!');
           }
-          loadGroupData(); // רענן את הנתונים
+          loadGroupData();
         } else {
           Alert.alert('Error', result.message || 'Failed to join group');
         }
       }
     } catch (error) {
-      console.error('Join/Cancel group error:', error);
+      console.error('Join/Cancel group error occurred');
       Alert.alert('Error', 'Failed to process request');
     } finally {
       setIsJoining(false);
@@ -239,6 +190,7 @@ const GroupDetailsScreen = ({ route, navigation }) => {
   };
 
   const handlePostCreated = useCallback((newPost) => {
+    console.log('New post created, refreshing posts');
     loadGroupPosts();
   }, [loadGroupPosts]);
 
@@ -256,6 +208,229 @@ const GroupDetailsScreen = ({ route, navigation }) => {
       Alert.alert('Error', 'Failed to delete recipe');
     }
   }, [loadGroupPosts, groupId, currentUser]);
+
+  // 🆕 פונקציה להסרת חבר מהקבוצה
+  const handleRemoveMember = async (memberUserId, memberName) => {
+    if (!isAdmin && !isCreator) {
+      Alert.alert('Permission Denied', 'Only admins can remove members');
+      return;
+    }
+
+    if (memberUserId === (currentUser?.id || currentUser?._id)) {
+      Alert.alert('Error', 'You cannot remove yourself from the group');
+      return;
+    }
+
+    Alert.alert(
+      'Remove Member',
+      `Are you sure you want to remove ${memberName} from the group?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            setRemovingMemberId(memberUserId);
+            try {
+              const result = await groupService.removeMember(
+                groupId, 
+                memberUserId, 
+                currentUser?.id || currentUser?._id
+              );
+              
+              if (result.success) {
+                Alert.alert('Success', `${memberName} has been removed from the group`);
+                loadGroupData(); // רענן את נתוני הקבוצה
+              } else {
+                Alert.alert('Error', result.message || 'Failed to remove member');
+              }
+            } catch (error) {
+              console.error('Remove member error occurred');
+              Alert.alert('Error', 'Failed to remove member');
+            } finally {
+              setRemovingMemberId(null);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  // 🆕 רנדר אזור חברי הקבוצה (תצוגה מקוצרת)
+  const renderMembersSection = () => {
+    if (!group || !group.members || group.members.length === 0) return null;
+
+    // הצג עד 6 חברים ראשונים
+    const previewMembers = group.members.slice(0, 6);
+    const hasMoreMembers = group.members.length > 6;
+
+    return (
+      <View style={styles.membersSection}>
+        <View style={styles.membersSectionHeader}>
+          <Text style={styles.membersSectionTitle}>
+            Members ({group.members.length})
+          </Text>
+          {hasMoreMembers && (
+            <TouchableOpacity 
+              style={styles.viewAllMembersButton}
+              onPress={() => setShowMembersModal(true)}
+            >
+              <Text style={styles.viewAllMembersText}>View All</Text>
+              <Ionicons name="chevron-forward" size={16} color={FLAVORWORLD_COLORS.primary} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <View style={styles.membersPreviewList}>
+          {previewMembers.map((member, index) => {
+            const memberId = member.userId || member._id || member.id;
+            const memberName = member.userName || member.name || member.fullName || 'Unknown User';
+            const memberRole = member.role || 'member';
+            const isCurrentUser = memberId === (currentUser?.id || currentUser?._id);
+            const canRemove = (isAdmin || isCreator) && !isCurrentUser && memberRole !== 'owner';
+
+            return (
+              <View key={index} style={styles.memberItem}>
+                <UserAvatar
+                  uri={member.userAvatar || member.avatar}
+                  name={memberName}
+                  size={32}
+                />
+                <View style={styles.memberInfo}>
+                  <Text style={styles.memberName} numberOfLines={1}>
+                    {memberName}
+                    {isCurrentUser && ' (You)'}
+                  </Text>
+                  <Text style={styles.memberRole}>
+                    {memberRole === 'owner' ? 'Owner' : 
+                     memberRole === 'admin' ? 'Admin' : 'Member'}
+                  </Text>
+                </View>
+                
+                {canRemove && (
+                  <TouchableOpacity
+                    style={styles.removeButton}
+                    onPress={() => handleRemoveMember(memberId, memberName)}
+                    disabled={removingMemberId === memberId}
+                  >
+                    {removingMemberId === memberId ? (
+                      <ActivityIndicator size="small" color={FLAVORWORLD_COLORS.white} />
+                    ) : (
+                      <Ionicons name="close" size={12} color={FLAVORWORLD_COLORS.white} />
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          })}
+        </View>
+
+        {hasMoreMembers && (
+          <TouchableOpacity 
+            style={styles.viewAllMembersButton}
+            onPress={() => setShowMembersModal(true)}
+          >
+            <Text style={styles.viewAllMembersText}>
+              View All {group.members.length} Members
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color={FLAVORWORLD_COLORS.primary} />
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
+
+  // 🆕 מודל רשימת חברים מלאה
+  const renderMembersModal = () => (
+    <Modal
+      visible={showMembersModal}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setShowMembersModal(false)}
+    >
+      <View style={styles.membersModalOverlay}>
+        <View style={styles.membersModalContent}>
+          <View style={styles.membersModalHeader}>
+            <Text style={styles.membersModalTitle}>
+              Group Members ({group?.members?.length || 0})
+            </Text>
+            <TouchableOpacity 
+              onPress={() => setShowMembersModal(false)}
+              style={styles.membersModalCloseButton}
+            >
+              <Ionicons name="close" size={20} color={FLAVORWORLD_COLORS.accent} />
+            </TouchableOpacity>
+          </View>
+          
+          <FlatList
+            data={group?.members || []}
+            keyExtractor={(item, index) => `${item.userId || item._id || index}`}
+            renderItem={({ item }) => {
+              const memberId = item.userId || item._id || item.id;
+              const memberName = item.userName || item.name || item.fullName || 'Unknown User';
+              const memberRole = item.role || 'member';
+              const joinDate = item.joinedAt ? new Date(item.joinedAt).toLocaleDateString() : 'Unknown';
+              const isCurrentUser = memberId === (currentUser?.id || currentUser?._id);
+              const canRemove = (isAdmin || isCreator) && !isCurrentUser && memberRole !== 'owner';
+
+              return (
+                <View style={styles.memberFullItem}>
+                  <UserAvatar
+                    uri={item.userAvatar || item.avatar}
+                    name={memberName}
+                    size={40}
+                  />
+                  <View style={styles.memberFullInfo}>
+                    <Text style={styles.memberFullName}>
+                      {memberName}
+                      {isCurrentUser && ' (You)'}
+                    </Text>
+                    <Text style={styles.memberFullRole}>
+                      {memberRole === 'owner' ? 'Owner' : 
+                       memberRole === 'admin' ? 'Admin' : 'Member'}
+                    </Text>
+                    <Text style={styles.memberJoinDate}>
+                      Joined: {joinDate}
+                    </Text>
+                  </View>
+                  
+                  {/* תגיות תפקיד */}
+                  {memberRole === 'owner' && (
+                    <View style={styles.ownerBadge}>
+                      <Text style={styles.ownerBadgeText}>OWNER</Text>
+                    </View>
+                  )}
+                  {memberRole === 'admin' && (
+                    <View style={styles.adminBadge}>
+                      <Text style={styles.adminBadgeText}>ADMIN</Text>
+                    </View>
+                  )}
+                  
+                  {canRemove && (
+                    <TouchableOpacity
+                      style={styles.removeFullButton}
+                      onPress={() => {
+                        setShowMembersModal(false);
+                        handleRemoveMember(memberId, memberName);
+                      }}
+                      disabled={removingMemberId === memberId}
+                    >
+                      {removingMemberId === memberId ? (
+                        <ActivityIndicator size="small" color={FLAVORWORLD_COLORS.white} />
+                      ) : (
+                        <Ionicons name="person-remove" size={16} color={FLAVORWORLD_COLORS.white} />
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
+              );
+            }}
+            showsVerticalScrollIndicator={false}
+          />
+        </View>
+      </View>
+    </Modal>
+  );
 
   const renderGroupHeader = () => {
     if (!group) return null;
@@ -322,7 +497,7 @@ const GroupDetailsScreen = ({ route, navigation }) => {
             </Text>
           </View>
 
-          {/* ✅ כפתור פעולה מעודכן */}
+          {/* כפתור פעולה מעודכן */}
           <View style={styles.actionButtonContainer}>
             {!isMember ? (
               hasPendingRequest ? (
@@ -381,31 +556,27 @@ const GroupDetailsScreen = ({ route, navigation }) => {
     );
   };
 
-  // ✅ עדכון renderCreatePost לבדוק שני המבנים
+  // 🔧 תיקון עדכון renderCreatePost
   const renderCreatePost = () => {
-    // 🔧 תיקון בדיקת הרשאות - בדוק שני המבנים
     const allowMemberPosts = group?.settings?.allowMemberPosts ?? group?.allowMemberPosts ?? true;
     
-    console.log('🔍 renderCreatePost debug:', {
+    console.log('Checking create post permissions:', {
       isMember,
       allowMemberPosts,
-      settingsAllowMemberPosts: group?.settings?.allowMemberPosts,
-      directAllowMemberPosts: group?.allowMemberPosts,
-      hasSettings: !!group?.settings,
-      shouldShowCreatePost: isMember && allowMemberPosts
+      shouldShow: isMember && allowMemberPosts
     });
 
     if (!isMember) {
-      console.log('❌ Not showing create post: user is not a member');
+      console.log('Not showing create post: user is not a member');
       return null;
     }
 
     if (!allowMemberPosts) {
-      console.log('❌ Not showing create post: member posts not allowed');
+      console.log('Not showing create post: member posts not allowed');
       return null;
     }
 
-    console.log('✅ Showing create post section');
+    console.log('Showing create post section');
 
     return (
       <View style={styles.createPostContainer}>
@@ -537,7 +708,6 @@ const GroupDetailsScreen = ({ route, navigation }) => {
             style={styles.headerMenuButton}
             onPress={() => {
                 if (isAdmin || isCreator) {
-                // הצג תפריט אדמין
                 Alert.alert(
                     'Admin Options',
                     'Choose an option',
@@ -552,7 +722,6 @@ const GroupDetailsScreen = ({ route, navigation }) => {
                     {
                         text: 'Group Settings',
                         onPress: () => {
-                        // TODO: נווט להגדרות קבוצה
                         Alert.alert('Coming Soon', 'Group settings feature is coming soon!');
                         }
                     },
@@ -585,6 +754,7 @@ const GroupDetailsScreen = ({ route, navigation }) => {
         ListHeaderComponent={() => (
           <View>
             {renderGroupHeader()}
+            {renderMembersSection()}
             {renderCreatePost()}
           </View>
         )}
@@ -626,7 +796,7 @@ const GroupDetailsScreen = ({ route, navigation }) => {
             
             <CreatePostComponent
               currentUser={currentUser}
-              groupId={groupId} // ⬅️ חשוב! לציין שזה פוסט של קבוצה
+              groupId={groupId}
               groupName={group.name}
               onPostCreated={(newPost) => {
                 handlePostCreated(newPost);
@@ -636,10 +806,14 @@ const GroupDetailsScreen = ({ route, navigation }) => {
           </View>
         </Modal>
       )}
+
+      {/* 🆕 מודל חברי הקבוצה */}
+      {renderMembersModal()}
     </SafeAreaView>
   );
 };
 
+// העתק את כל ה-styles כמו שהם...
 const additionalStyles = StyleSheet.create({
   menuButtonContainer: {
     position: 'relative',
@@ -1033,6 +1207,165 @@ const styles = StyleSheet.create({
   },
   modalPlaceholder: {
     width: 32,
+  },
+  // 🆕 אזור חברי הקבוצה
+  membersSection: {
+    backgroundColor: FLAVORWORLD_COLORS.white,
+    marginBottom: 8,
+    padding: 16,
+  },
+  membersSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  membersSectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: FLAVORWORLD_COLORS.text,
+  },
+  viewAllMembersButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: FLAVORWORLD_COLORS.background,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: FLAVORWORLD_COLORS.border,
+  },
+  viewAllMembersText: {
+    fontSize: 14,
+    color: FLAVORWORLD_COLORS.primary,
+    fontWeight: '500',
+    marginRight: 4,
+  },
+  membersPreviewList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  memberItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: FLAVORWORLD_COLORS.background,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: FLAVORWORLD_COLORS.border,
+    maxWidth: (screenWidth - 64) / 2,
+  },
+  memberInfo: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  memberName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: FLAVORWORLD_COLORS.text,
+    numberOfLines: 1,
+  },
+  memberRole: {
+    fontSize: 12,
+    color: FLAVORWORLD_COLORS.textLight,
+    marginTop: 2,
+  },
+  removeButton: {
+    marginLeft: 8,
+    padding: 4,
+    backgroundColor: FLAVORWORLD_COLORS.danger,
+    borderRadius: 10,
+  },
+  // Modal של רשימת חברים מלאה
+  membersModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  membersModalContent: {
+    backgroundColor: FLAVORWORLD_COLORS.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+    paddingTop: 20,
+  },
+  membersModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: FLAVORWORLD_COLORS.border,
+  },
+  membersModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: FLAVORWORLD_COLORS.text,
+  },
+  membersModalCloseButton: {
+    padding: 8,
+    backgroundColor: FLAVORWORLD_COLORS.background,
+    borderRadius: 15,
+  },
+  memberFullItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: FLAVORWORLD_COLORS.border,
+  },
+  memberFullInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  memberFullName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: FLAVORWORLD_COLORS.text,
+  },
+  memberFullRole: {
+    fontSize: 14,
+    color: FLAVORWORLD_COLORS.textLight,
+    marginTop: 2,
+  },
+  memberJoinDate: {
+    fontSize: 12,
+    color: FLAVORWORLD_COLORS.textLight,
+    marginTop: 2,
+  },
+  adminBadge: {
+    backgroundColor: FLAVORWORLD_COLORS.accent,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    marginRight: 8,
+  },
+  adminBadgeText: {
+    color: FLAVORWORLD_COLORS.white,
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  ownerBadge: {
+    backgroundColor: FLAVORWORLD_COLORS.warning,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    marginRight: 8,
+  },
+  ownerBadgeText: {
+    color: FLAVORWORLD_COLORS.white,
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  removeFullButton: {
+    padding: 8,
+    backgroundColor: FLAVORWORLD_COLORS.danger,
+    borderRadius: 15,
   },
   ...additionalStyles,
 });

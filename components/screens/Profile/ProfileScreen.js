@@ -64,18 +64,18 @@ const ProfileScreen = ({ route, navigation }) => {
     try {
       if (isOwnProfile) {
         setProfileUser(currentUser);
-        console.log('📱 Loading own profile:', currentUser?.fullName);
+        console.log('Loading own profile');
       } else {
-        console.log('🔍 Loading profile for user ID:', userId);
+        console.log('Loading user profile');
         const userResult = await userService.getUserProfile(userId);
         
         if (userResult.success) {
           setProfileUser(userResult.data);
-          console.log('✅ Loaded other user profile:', userResult.data?.fullName);
+          console.log('User profile loaded successfully');
           
           await loadFollowStatus();
         } else {
-          console.error('❌ Failed to load user profile:', userResult.message);
+          console.error('Failed to load user profile');
           Alert.alert('Error', 'Failed to load user profile');
           navigation.goBack();
           return;
@@ -85,7 +85,7 @@ const ProfileScreen = ({ route, navigation }) => {
       await loadUserPosts();
       
     } catch (error) {
-      console.error('Profile load error:', error);
+      console.error('Profile load error occurred');
       Alert.alert('Error', 'Failed to load profile');
     } finally {
       setLoading(false);
@@ -96,7 +96,7 @@ const ProfileScreen = ({ route, navigation }) => {
     if (isOwnProfile || !currentUser?.id) return;
     
     try {
-      console.log('👥 Loading follow status...');
+      console.log('Loading follow status');
       
       const result = await chatService.getFollowStatus(
         userId, 
@@ -110,18 +110,18 @@ const ProfileScreen = ({ route, navigation }) => {
           followersCount: result.data.followersCount
         }));
         
-        console.log('✅ Follow status loaded:', result.data.isFollowing);
+        console.log('Follow status loaded successfully');
       } else {
-        console.error('❌ Failed to load follow status:', result.message);
+        console.error('Failed to load follow status');
       }
     } catch (error) {
-      console.error('❌ Load follow status error:', error);
+      console.error('Load follow status error occurred');
     }
   };
 
   const loadUserPosts = async () => {
     try {
-      console.log('🔍 Loading posts for user ID:', userId);
+      console.log('Loading user posts');
       const result = await recipeService.getAllRecipes();
       
       if (result.success) {
@@ -132,7 +132,7 @@ const ProfileScreen = ({ route, navigation }) => {
           post.user?._id === userId
         );
 
-        console.log(`📊 Found ${filteredPosts.length} posts for user ${userId}`);
+        console.log('User posts loaded successfully');
 
         const sortedPosts = filteredPosts.sort((a, b) => 
           new Date(b.createdAt) - new Date(a.createdAt)
@@ -151,7 +151,7 @@ const ProfileScreen = ({ route, navigation }) => {
         }));
       }
     } catch (error) {
-      console.error('Posts load error:', error);
+      console.error('Posts load error occurred');
     }
   };
 
@@ -160,7 +160,7 @@ const ProfileScreen = ({ route, navigation }) => {
     
     setIsFollowLoading(true);
     try {
-      console.log('👥 Toggling follow status...');
+      console.log('Toggling follow status');
       
       const result = await chatService.toggleFollow(
         userId,
@@ -180,12 +180,12 @@ const ProfileScreen = ({ route, navigation }) => {
           isFollowing ? 'Unfollowed successfully' : 'Following successfully!'
         );
         
-        console.log('✅ Follow status updated');
+        console.log('Follow status updated successfully');
       } else {
         Alert.alert('Error', result.message || 'Failed to update follow status');
       }
     } catch (error) {
-      console.error('❌ Follow toggle error:', error);
+      console.error('Follow toggle error occurred');
       Alert.alert('Error', 'Failed to update follow status');
     } finally {
       setIsFollowLoading(false);
@@ -206,7 +206,7 @@ const ProfileScreen = ({ route, navigation }) => {
     setStartingChat(true);
 
     try {
-      console.log('💬 Starting chat with user:', profileUser);
+      console.log('Starting chat with user');
       
       const result = await chatService.getOrCreatePrivateChat(userId);
       
@@ -224,7 +224,7 @@ const ProfileScreen = ({ route, navigation }) => {
         Alert.alert('Error', result.message || 'Failed to start chat');
       }
     } catch (error) {
-      console.error('❌ Start chat error:', error);
+      console.error('Start chat error occurred');
       Alert.alert('Error', 'Failed to start chat');
     } finally {
       setStartingChat(false);
@@ -239,17 +239,13 @@ const ProfileScreen = ({ route, navigation }) => {
         listType: 'followers'
       });
     } catch (error) {
-      console.error('❌ Navigate to followers error:', error);
+      console.error('Navigate to followers error occurred');
     }
   };
 
-  // 🆕 פונקציה לפתיחת מסך הסטטיסטיקות
+  // פונקציה לפתיחת מסך הסטטיסטיקות
   const handleViewStatistics = () => {
-    console.log('📊 Navigating to UserStatistics with data:', {
-      currentUser: profileUser,
-      userPosts: userPosts.length,
-      userId: userId
-    });
+    console.log('Navigating to UserStatistics');
     
     navigation.navigate('UserStatistics', {
       currentUser: profileUser,
@@ -403,7 +399,7 @@ const ProfileScreen = ({ route, navigation }) => {
             <Ionicons name="chevron-forward" size={16} color={FLAVORWORLD_COLORS.textLight} />
           </TouchableOpacity>
 
-          {/* 🆕 כפתור סטטיסטיקות במקום מתכונים שמורים */}
+          {/* כפתור סטטיסטיקות במקום מתכונים שמורים */}
           <TouchableOpacity 
             style={styles.quickActionItem} 
             onPress={handleViewStatistics}

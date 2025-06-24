@@ -185,10 +185,10 @@ app.post('/api/groups/:groupId/posts', upload.any(), async (req, res) => {
   }
 });
 
-// Get all posts for a specific group - מתוקן
+// Get all posts for a specific group - מתוקן לכלול פוסטים של כל החברים
 app.get('/api/groups/:groupId/posts', async (req, res) => {
   try {
-    console.log('📥 GET group posts request:', {
+    console.log('GET group posts request:', {
       groupId: req.params.groupId,
       userId: req.query.userId
     });
@@ -207,7 +207,7 @@ app.get('/api/groups/:groupId/posts', async (req, res) => {
       return res.status(404).json({ message: 'Group not found' });
     }
 
-    console.log('📋 Group found:', { 
+    console.log('Group found:', { 
       name: group.name, 
       isPrivate: group.isPrivate,
       membersCount: group.members?.length
@@ -215,37 +215,68 @@ app.get('/api/groups/:groupId/posts', async (req, res) => {
 
     const { userId } = req.query;
 
-    // ✅ בדיקת גישה לקבוצה פרטית - החזרת מערך ריק במקום שגיאה
-    if (group.isPrivate && userId) {
-      const isMember = group.members.some(member => 
+    // בדיקת חברות בקבוצה
+    let isMember = false;
+    let isAdmin = false;
+    let isCreator = false;
+
+    if (userId) {
+      isMember = group.members.some(member => 
         member.userId === userId || member.userId?.toString() === userId?.toString()
       );
       
-      console.log('🔍 Privacy check:', { 
-        isPrivate: group.isPrivate, 
-        userId, 
-        isMember 
-      });
+      isAdmin = group.members.some(member => 
+        (member.userId === userId || member.userId?.toString() === userId?.toString()) && 
+        (member.role === 'admin' || member.role === 'owner')
+      );
       
-      if (!isMember) {
-        console.log('⚠️  User is not a member of private group, returning empty array');
-        // ✅ החזר מערך ריק במקום שגיאה 403
-        return res.json([]);
-      }
-    } else if (group.isPrivate && !userId) {
-      console.log('⚠️  No userId provided for private group, returning empty array');
-      // ✅ החזר מערך ריק במקום שגיאה 403
+      isCreator = group.creatorId === userId || group.creatorId?.toString() === userId?.toString();
+    }
+
+    console.log('User permissions:', { 
+      userId, 
+      isMember, 
+      isAdmin, 
+      isCreator,
+      isPrivate: group.isPrivate 
+    });
+
+    // בדיקת גישה לקבוצה פרטית
+    if (group.isPrivate && !isMember) {
+      console.log('Access denied to private group, returning empty array');
       return res.json([]);
     }
 
-    // טען פוסטים של הקבוצה (רק מאושרים)
-    const posts = await GroupPost.find({ 
-      groupId: req.params.groupId,
-      isApproved: true 
-    }).sort({ createdAt: -1 });
+    // 🔧 תיקון עיקרי: טען פוסטים לפי סטטוס האישור והרשאות המשתמש
+    let postsQuery = { groupId: req.params.groupId };
 
-    console.log('📊 Posts query result:', {
-      totalApprovedPosts: posts.length,
+    if (isAdmin || isCreator) {
+      // אדמינים רואים הכל (כולל פוסטים שמחכים לאישור)
+      console.log('Admin/Creator - showing all posts');
+    } else if (isMember) {
+      // חברים רגילים רואים:
+      // 1. פוסטים מאושרים של כולם
+      // 2. הפוסטים שלהם (גם אם עוד לא אושרו)
+      postsQuery = {
+        groupId: req.params.groupId,
+        $or: [
+          { isApproved: true },
+          { userId: userId, isApproved: false }
+        ]
+      };
+      console.log('Member - showing approved posts + own pending posts');
+    } else {
+      // לא חברים רואים רק פוסטים מאושרים (אם זו קבוצה ציבורית)
+      postsQuery.isApproved = true;
+      console.log('Non-member - showing only approved posts');
+    }
+
+    // טען פוסטים של הקבוצה
+    const posts = await GroupPost.find(postsQuery).sort({ createdAt: -1 });
+
+    console.log('Posts query result:', {
+      totalPosts: posts.length,
+      query: postsQuery,
       groupId: req.params.groupId
     });
 
@@ -259,7 +290,10 @@ app.get('/api/groups/:groupId/posts', async (req, res) => {
             userName: user ? user.fullName : 'Unknown User',
             userAvatar: user ? user.avatar : null,
             userBio: user ? user.bio : null,
-            groupName: group.name
+            groupName: group.name,
+            // 🆕 הוסף מידע על סטטוס האישור
+            isPending: !post.isApproved,
+            canApprove: (isAdmin || isCreator) && !post.isApproved
           };
         } catch (error) {
           console.error('Error enriching post:', post._id, error);
@@ -268,17 +302,19 @@ app.get('/api/groups/:groupId/posts', async (req, res) => {
             userName: 'Unknown User',
             userAvatar: null,
             userBio: null,
-            groupName: group.name
+            groupName: group.name,
+            isPending: !post.isApproved,
+            canApprove: (isAdmin || isCreator) && !post.isApproved
           };
         }
       })
     );
 
-    console.log(`✅ Returning ${enrichedPosts.length} approved posts for group ${group.name}`);
+    console.log(`Returning ${enrichedPosts.length} posts for group ${group.name}`);
     res.json(enrichedPosts);
     
   } catch (error) {
-    console.error('❌ Get group posts error:', error);
+    console.error('Get group posts error:', error);
     res.status(500).json({ message: 'Failed to fetch group posts' });
   }
 });
@@ -1226,6 +1262,80 @@ app.put('/api/groups/:id/requests/:userId', async (req, res) => {
   } catch (error) {
     console.error('Handle request error:', error);
     res.status(500).json({ message: 'Failed to handle request' });
+  }
+});
+
+// Remove member from group (Admin only)
+app.delete('/api/groups/:groupId/members/:memberUserId', async (req, res) => {
+  try {
+    console.log('Removing member from group');
+    
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { groupId, memberUserId } = req.params;
+    const { adminId } = req.body;
+
+    // בדיקת תקינות IDs
+    if (!mongoose.Types.ObjectId.isValid(groupId) || !memberUserId || !adminId) {
+      return res.status(400).json({ message: 'Invalid group ID, member ID, or admin ID' });
+    }
+
+    // בדיקה שהקבוצה קיימת
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: 'Group not found' });
+    }
+
+    // בדיקה שהמבקש הוא אדמין או יוצר הקבוצה
+    const isAdmin = group.members.some(member => 
+      (member.userId === adminId || member.userId?.toString() === adminId?.toString()) && 
+      (member.role === 'admin' || member.role === 'owner')
+    );
+    const isCreator = group.creatorId === adminId || group.creatorId?.toString() === adminId?.toString();
+    
+    if (!isAdmin && !isCreator) {
+      return res.status(403).json({ message: 'Only admins can remove members' });
+    }
+
+    // בדיקה שהחבר קיים בקבוצה
+    const memberIndex = group.members.findIndex(member => 
+      member.userId === memberUserId || member.userId?.toString() === memberUserId?.toString()
+    );
+    
+    if (memberIndex === -1) {
+      return res.status(404).json({ message: 'Member not found in group' });
+    }
+
+    const memberToRemove = group.members[memberIndex];
+
+    // מניעת הסרת היוצר
+    if (memberToRemove.role === 'owner' || group.creatorId === memberUserId || group.creatorId?.toString() === memberUserId?.toString()) {
+      return res.status(403).json({ message: 'Cannot remove the group creator' });
+    }
+
+    // מניעת הסרה עצמית (השתמש ב-leave endpoint במקום)
+    if (memberUserId === adminId) {
+      return res.status(400).json({ message: 'Use leave group endpoint to remove yourself' });
+    }
+
+    // הסרת החבר מהקבוצה
+    group.members.splice(memberIndex, 1);
+    group.membersCount = group.members.length;
+    
+    await group.save();
+
+    console.log('Member removed from group successfully');
+    res.json({ 
+      message: 'Member removed successfully',
+      removedMemberId: memberUserId,
+      newMembersCount: group.membersCount
+    });
+
+  } catch (error) {
+    console.error('Remove member error:', error);
+    res.status(500).json({ message: 'Failed to remove member' });
   }
 });
 

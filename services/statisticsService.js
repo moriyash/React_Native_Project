@@ -1,34 +1,30 @@
-// services/statisticsService.js
-
 import axios from 'axios';
 
-// ודא שיש לך את ה-BASE_URL בקובץ config או הגדר אותו כאן
-const API_BASE_URL = 'http://192.168.1.222:3000'; // עדכן לכתובת השרת שלך
+const API_BASE_URL = 'http://192.168.1.222:3000';
 
 class StatisticsService {
   constructor() {
     this.baseURL = `${API_BASE_URL}/api/statistics`;
     
-    // הגדרת axios instance עם headers ברירת מחדל
     this.api = axios.create({
-      baseURL: API_BASE_URL, // base URL של השרת שלך
+      baseURL: API_BASE_URL,
       headers: {
         'Content-Type': 'application/json',
       },
-      timeout: 10000, // 10 שניות timeout
+      timeout: 10000,
     });
 
-    // Interceptor לטיפול בשגיאות
     this.api.interceptors.response.use(
       (response) => response,
       (error) => {
-        console.error('📊 Statistics API Error:', error.response?.data || error.message);
+        if (error.response?.status >= 500) {
+          console.error('Server error occurred');
+        }
         return Promise.reject(error);
       }
     );
   }
 
-  // הוספת token אם נדרש (אם יש authentication)
   setAuthToken(token) {
     if (token) {
       this.api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -37,45 +33,40 @@ class StatisticsService {
     }
   }
 
-  // קבלת נתוני סטטיסטיקות מלאים עבור משתמש
   async getUserStatistics(userId) {
     try {
-      console.log('📊 Fetching user statistics for:', userId);
+      console.log('Fetching user statistics');
       
       const response = await this.api.get(`/user/${userId}`);
 
       if (response.data && response.data.success) {
-        console.log('✅ Statistics received:', response.data.data);
+        console.log('Statistics fetched successfully');
         return {
           success: true,
           data: response.data.data
         };
       } else {
-        console.warn('⚠️ Server returned unsuccessful response:', response.data);
+        console.log('No statistics data available');
         return {
           success: false,
           message: response.data?.message || 'Failed to fetch statistics'
         };
       }
     } catch (error) {
-      console.error('❌ Statistics fetch error:', error);
+      console.error('Statistics fetch failed');
       
-      // טיפול בסוגי שגיאות שונות
       if (error.response) {
-        // השרת החזיר תגובה עם status code שגוי
         return {
           success: false,
           message: error.response.data?.message || `Server error: ${error.response.status}`,
           status: error.response.status
         };
       } else if (error.request) {
-        // הבקשה נשלחה אבל לא התקבלה תגובה
         return {
           success: false,
           message: 'Network error - server not responding'
         };
       } else {
-        // שגיאה בהגדרת הבקשה
         return {
           success: false,
           message: error.message || 'Request configuration error'
@@ -84,26 +75,27 @@ class StatisticsService {
     }
   }
 
-  // קבלת התפתחות לייקים לפי פוסטים
   async getLikesProgression(userId) {
     try {
-      console.log('📈 Fetching likes progression for:', userId);
+      console.log('Fetching likes progression');
       
       const response = await this.api.get(`/likes-progression/${userId}`);
       
       if (response.data && response.data.success) {
+        console.log('Likes progression fetched successfully');
         return {
           success: true,
           data: response.data.data
         };
       } else {
+        console.log('No likes progression data available');
         return {
           success: false,
           message: response.data?.message || 'Failed to fetch likes progression'
         };
       }
     } catch (error) {
-      console.error('❌ Likes progression error:', error);
+      console.error('Likes progression fetch failed');
       return {
         success: false,
         message: error.response?.data?.message || 'Network error occurred'
@@ -111,21 +103,19 @@ class StatisticsService {
     }
   }
 
-  // קבלת עליית עוקבים לאורך זמן - משתמש בendpoint הקיים בשרת
   async getFollowersGrowth(userId) {
     try {
-      console.log('👥 Fetching followers data for:', userId);
+      console.log('Fetching followers data');
       
-      // השתמש בendpoint הקיים בשרת שלך
       const response = await this.api.get(`/users/${userId}/follow-status/${userId}`, {
-        baseURL: `${API_BASE_URL}/api` // עדכן ל-API structure שלך
+        baseURL: `${API_BASE_URL}/api`
       });
       
       if (response.data && response.data.followersCount !== undefined) {
-        // צור נתוני עליית עוקבים פשוטים מהמידע הנוכחי
+        console.log('Followers data retrieved successfully');
+        
         const currentFollowers = response.data.followersCount;
         
-        // צור נתונים היסטוריים פשוטים (זה יהיה מוגבל עד שתוסיף tracking אמיתי)
         const followersGrowth = [{
           month: new Date().toLocaleString('default', { month: 'short' }),
           monthYear: new Date().toLocaleString('default', { month: 'short', year: 'numeric' }),
@@ -139,13 +129,14 @@ class StatisticsService {
           currentFollowersCount: currentFollowers
         };
       } else {
+        console.log('No followers data available');
         return {
           success: false,
           message: 'No followers data available'
         };
       }
     } catch (error) {
-      console.error('❌ Followers data error:', error);
+      console.error('Followers data fetch failed');
       return {
         success: false,
         message: error.response?.data?.message || 'Network error occurred'
@@ -153,26 +144,27 @@ class StatisticsService {
     }
   }
 
-  // קבלת התפלגות קטגוריות מתכונים
   async getCategoriesDistribution(userId) {
     try {
-      console.log('🥘 Fetching categories distribution for:', userId);
+      console.log('Fetching categories distribution');
       
       const response = await this.api.get(`/categories-distribution/${userId}`);
       
       if (response.data && response.data.success) {
+        console.log('Categories distribution fetched successfully');
         return {
           success: true,
           data: response.data.data
         };
       } else {
+        console.log('No categories distribution data available');
         return {
           success: false,
           message: response.data?.message || 'Failed to fetch categories distribution'
         };
       }
     } catch (error) {
-      console.error('❌ Categories distribution error:', error);
+      console.error('Categories distribution fetch failed');
       return {
         success: false,
         message: error.response?.data?.message || 'Network error occurred'
@@ -180,13 +172,11 @@ class StatisticsService {
     }
   }
 
-  // עיבוד נתונים אמיתיים מהפוסטים שלי במונגו
   processRealUserData(userPosts, userId) {
-    console.log('🔄 Processing real MongoDB data for user:', userId, 'Posts count:', userPosts.length);
+    console.log('Processing user data');
     
-    // אם אין פוסטים - החזר מבנה ריק
     if (!userPosts || userPosts.length === 0) {
-      console.log('📭 No posts found for user, returning empty data structure');
+      console.log('No posts found for user');
       return {
         totalPosts: 0,
         totalLikes: 0,
@@ -198,10 +188,11 @@ class StatisticsService {
       };
     }
 
+    console.log('User data processed successfully');
+
     const totalPosts = userPosts.length;
     const totalLikes = userPosts.reduce((sum, post) => sum + (post.likes?.length || 0), 0);
     
-    // התפתחות לייקים לפי פוסט (ממוין לפי תאריך יצירה אמיתי)
     const likesProgression = userPosts
       .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
       .map((post, index) => ({
@@ -213,7 +204,6 @@ class StatisticsService {
         createdAt: post.createdAt
       }));
 
-    // התפלגות קטגוריות אמיתית מהפוסטים
     const categoriesMap = {};
     userPosts.forEach(post => {
       const category = post.category || post.cuisine || 'Other';
@@ -226,33 +216,33 @@ class StatisticsService {
       percentage: totalPosts > 0 ? Math.round((count / totalPosts) * 100) : 0
     }));
 
-    // עליית עוקבים - זה יחזור ריק כי זה נתון שצריך לבוא מהשרת
     const followersGrowth = [];
 
     const processedData = {
       totalPosts,
       totalLikes,
-      totalFollowers: 0, // יעודכן מהשרת
+      totalFollowers: 0,
       averageLikes: totalPosts > 0 ? Math.round(totalLikes / totalPosts) : 0,
       likesProgression,
       categoriesDistribution,
       followersGrowth
     };
 
-    console.log('✅ Real user data processed:', processedData);
     return processedData;
   }
 
-  // פונקציה לבדיקת חיבור לשרת
   async testConnection() {
     try {
+      console.log('Testing server connection');
       const response = await this.api.get('/health');
+      console.log('Server connection successful');
       return {
         success: true,
         message: 'Server connection successful',
         data: response.data
       };
     } catch (error) {
+      console.error('Server connection failed');
       return {
         success: false,
         message: 'Server connection failed',
@@ -261,27 +251,28 @@ class StatisticsService {
     }
   }
 
-  // פונקציה לעדכון סטטיסטיקות (אם נדרש)
   async updateUserStatistics(userId, statsData) {
     try {
-      console.log('🔄 Updating statistics for user:', userId);
+      console.log('Updating user statistics');
       
       const response = await this.api.put(`/user/${userId}`, statsData);
       
       if (response.data && response.data.success) {
+        console.log('Statistics updated successfully');
         return {
           success: true,
           data: response.data.data,
           message: 'Statistics updated successfully'
         };
       } else {
+        console.log('Statistics update failed');
         return {
           success: false,
           message: response.data?.message || 'Failed to update statistics'
         };
       }
     } catch (error) {
-      console.error('❌ Statistics update error:', error);
+      console.error('Statistics update error occurred');
       return {
         success: false,
         message: error.response?.data?.message || 'Network error occurred'
@@ -290,11 +281,8 @@ class StatisticsService {
   }
 }
 
-// יצירת instance יחיד של השירות
 const statisticsServiceInstance = new StatisticsService();
 
-// ייצוא named export
 export const statisticsService = statisticsServiceInstance;
 
-// ייצוא ברירת מחדל גם כן
 export default statisticsServiceInstance;

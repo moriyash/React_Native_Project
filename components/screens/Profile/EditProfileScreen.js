@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../../services/AuthContext';
 import UserAvatar from '../../common/UserAvatar';
-import PasswordInput from '../../common/PasswordInput'; // ⬅️ הוספתי את הקומפוננטה
+import PasswordInput from '../../common/PasswordInput';
 import { userService } from '../../../services/UserService';
 
 const FLAVORWORLD_COLORS = {
@@ -73,7 +73,7 @@ const EditProfileScreen = ({ navigation }) => {
         setNewAvatar(result.assets[0]);
       }
     } catch (error) {
-      console.error('Image picker error:', error);
+      console.error('Image picker error occurred');
       Alert.alert('Error', 'Failed to pick image');
     }
   };
@@ -95,17 +95,17 @@ const EditProfileScreen = ({ navigation }) => {
         const avatarResult = await userService.updateAvatar(newAvatar.uri);
         
         if (avatarResult.success) {
-          avatarUrl = avatarResult.data.url; // השתמש ב-url שמחזיר השרת
-          console.log('✅ Avatar uploaded successfully:', avatarUrl);
+          avatarUrl = avatarResult.data.url;
+          console.log('Avatar uploaded successfully');
         } else {
           throw new Error(avatarResult.message || 'Failed to upload avatar');
         }
         setIsUploadingAvatar(false);
       }
 
-      // עדכון פרטי הפרופיל - הוספת userId!
+      // עדכון פרטי הפרופיל
       const profileData = {
-        userId: currentUser?.id || currentUser?._id, // ⬅️ הוספתי את זה!
+        userId: currentUser?.id || currentUser?._id,
         fullName: fullName.trim(),
         bio: bio.trim(),
       };
@@ -115,10 +115,7 @@ const EditProfileScreen = ({ navigation }) => {
         profileData.avatar = avatarUrl;
       }
 
-      console.log('🔄 Sending profile update:', {
-        ...profileData,
-        avatar: profileData.avatar ? '[Base64 Data]' : 'No avatar'
-      });
+      console.log('Sending profile update');
 
       const result = await userService.updateProfile(profileData);
 
@@ -146,7 +143,7 @@ const EditProfileScreen = ({ navigation }) => {
       }
 
     } catch (error) {
-      console.error('Save profile error:', error);
+      console.error('Save profile error occurred');
       Alert.alert('Error', error.message || 'Failed to update profile');
     } finally {
       setIsLoading(false);
@@ -165,7 +162,6 @@ const EditProfileScreen = ({ navigation }) => {
       return;
     }
 
-    // הקומפוננטה כבר עושה validation, אבל נוסיף בדיקה נוספת
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z]).{8,}$/;
     if (!passwordRegex.test(newPassword)) {
       Alert.alert(
@@ -179,13 +175,12 @@ const EditProfileScreen = ({ navigation }) => {
 
     try {
       const result = await userService.changePassword({
-        userId: currentUser?.id || currentUser?._id, // ⬅️ הוספתי את ה-userId
+        userId: currentUser?.id || currentUser?._id,
         currentPassword,
         newPassword
       });
 
       if (result.success) {
-        // עצור את הטעינה לפני הAlert
         setIsLoading(false);
         
         Alert.alert('Success! 🔐', 'Your password has been changed successfully', [
@@ -203,13 +198,11 @@ const EditProfileScreen = ({ navigation }) => {
         throw new Error(result.message || 'Failed to change password');
       }
     } catch (error) {
-      // עצור את הטעינה לפני הAlert
       setIsLoading(false);
       
-      console.error('Change password error:', error);
+      console.error('Change password error occurred');
       Alert.alert('Error', error.message || 'Failed to change password');
     }
-    // הסרתי את finally כי אנחנו עוצרים את הטעינה באופן מפורש
   };
 
   const renderPasswordModal = () => (
@@ -238,7 +231,7 @@ const EditProfileScreen = ({ navigation }) => {
                 value={currentPassword}
                 onChangeText={setCurrentPassword}
                 placeholder="Enter current password"
-                isConfirmation={true} // כדי לא לעשות validation על הסיסמה הישנה
+                isConfirmation={true}
                 style={styles.passwordInputStyle}
               />
             </View>
@@ -249,7 +242,7 @@ const EditProfileScreen = ({ navigation }) => {
                 value={newPassword}
                 onChangeText={setNewPassword}
                 placeholder="Enter new password"
-                isConfirmation={false} // כדי לעשות validation
+                isConfirmation={false}
                 style={styles.passwordInputStyle}
               />
             </View>
@@ -260,7 +253,7 @@ const EditProfileScreen = ({ navigation }) => {
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 placeholder="Confirm new password"
-                isConfirmation={true} // כדי לא לעשות validation כפול
+                isConfirmation={true}
                 style={styles.passwordInputStyle}
               />
             </View>
@@ -635,7 +628,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   passwordInputStyle: {
-    marginBottom: 0, // מאפס את הרווח של הקומפוננטה כדי לא להכפיל
+    marginBottom: 0,
   },
 });
 
