@@ -23,7 +23,7 @@ const AppNavigator = () => {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {isLoggedIn ? (
-          <Stack.Screen name="Home" component={HomeNavigator} />  // ❗ פה השתמש ב־HomeNavigator
+          <Stack.Screen name="Home" component={HomeNavigator} />  
         ) : (
           <Stack.Screen name="Auth" component={AuthNavigator} />
         )}

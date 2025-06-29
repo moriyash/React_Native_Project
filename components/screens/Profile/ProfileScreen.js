@@ -17,6 +17,7 @@ import { useAuth } from '../../../services/AuthContext';
 import { recipeService } from '../../../services/recipeService';
 import { userService } from '../../../services/UserService';
 import { chatService } from '../../../services/chatServices';
+import { statisticsService } from '../../../services/statisticsService'; // הוספנו את השירות
 import UserAvatar from '../../common/UserAvatar';
 import PostComponent from '../../common/PostComponent';
 
@@ -140,18 +141,63 @@ const ProfileScreen = ({ route, navigation }) => {
 
         setUserPosts(sortedPosts);
 
-        const totalLikes = sortedPosts.reduce((sum, post) => 
-          sum + (post.likes ? post.likes.length : 0), 0
-        );
-
-        setStats(prev => ({
-          ...prev,
-          postsCount: sortedPosts.length,
-          likesCount: totalLikes
-        }));
+        // משתמשים בשירות הסטטיסטיקות לחישוב מדויק
+        await calculateUserStatistics(sortedPosts);
       }
     } catch (error) {
       console.error('Posts load error occurred');
+    }
+  };
+
+  // פונקציה חדשה לחישוב סטטיסטיקות מדויקות
+  const calculateUserStatistics = async (posts) => {
+    try {
+      console.log('Calculating user statistics using statistics service');
+      
+      // משתמשים בשירות הסטטיסטיקות לעיבוד נתונים אמיתיים
+      const statsData = statisticsService.processRealUserData(posts, userId);
+      
+      // מנסים לקבל נתוני עוקבים אמיתיים מהשרת
+      let followersCount = 0;
+      try {
+        const followersResult = await statisticsService.getFollowersGrowth(userId);
+        if (followersResult.success && followersResult.data) {
+          followersCount = followersResult.currentFollowersCount || 0;
+          console.log('Real followers data retrieved successfully');
+        } else {
+          console.log('No followers data available from server');
+        }
+      } catch (followersError) {
+        console.log('Could not fetch followers data from server');
+        followersCount = 0;
+      }
+
+      // עדכון הסטטיסטיקות עם הנתונים המדויקים
+      setStats({
+        postsCount: statsData.totalPosts,
+        likesCount: statsData.totalLikes,
+        followersCount: followersCount
+      });
+
+      console.log('Statistics calculated:', {
+        posts: statsData.totalPosts,
+        likes: statsData.totalLikes,
+        followers: followersCount
+      });
+
+    } catch (error) {
+      console.error('Statistics calculation error:', error);
+      
+      // במקרה של שגיאה, נחזור לחישוב פשוט
+      const totalLikes = posts.reduce((sum, post) => 
+        sum + (post.likes ? post.likes.length : 0), 0
+      );
+
+      setStats(prev => ({
+        ...prev,
+        postsCount: posts.length,
+        likesCount: totalLikes
+      }));
     }
   };
 
@@ -297,7 +343,7 @@ const ProfileScreen = ({ route, navigation }) => {
       <View style={styles.statsContainer}>
         <TouchableOpacity 
           style={styles.statItem} 
-          onPress={() => setSelectedTab('posts')}
+          onPress={() => Alert.alert('Total Recipes', `You've shared ${stats.postsCount} delicious recipes with the FlavorWorld community!`)}
         >
           <Text style={styles.statNumber}>{stats.postsCount}</Text>
           <Text style={styles.statLabel}>Recipes</Text>
@@ -305,15 +351,15 @@ const ProfileScreen = ({ route, navigation }) => {
         
         <TouchableOpacity 
           style={styles.statItem} 
-          onPress={() => Alert.alert('Likes', `Total likes received: ${stats.likesCount}`)}
+          onPress={() => Alert.alert('Total Likes', `You've received ${stats.likesCount} likes across all your recipes!`)}
         >
           <Text style={styles.statNumber}>{stats.likesCount}</Text>
-          <Text style={styles.statLabel}>Likes</Text>
+          <Text style={styles.statLabel}>Total Likes</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
           style={styles.statItem} 
-          onPress={handleShowFollowers}
+          onPress={() => Alert.alert('Total Followers', `You have ${stats.followersCount} followers who love your recipes!`)}
         >
           <Text style={styles.statNumber}>{stats.followersCount}</Text>
           <Text style={styles.statLabel}>Followers</Text>

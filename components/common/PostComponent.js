@@ -246,18 +246,20 @@ const PostComponent = ({
         // תגובה לפוסט של קבוצה
         console.log('🏠 Adding comment to group post...');
         result = await groupService.addCommentToGroupPost(groupId, postId, {
-          text: newComment.trim(),
-          userId: currentUserId,
-          userName: currentUserName
-        });
+        text: newComment.trim(),
+        userId: currentUserId,
+        userName: currentUserName,
+        userAvatar: currentUser?.avatar || currentUser?.userAvatar // הוסף את השורה הזאת
+      });
       } else {
         // תגובה לפוסט רגיל
         console.log('🍳 Adding comment to regular post...');
         result = await recipeService.addComment(postId, {
-          text: newComment.trim(),
-          userId: currentUserId,
-          userName: currentUserName
-        });
+        text: newComment.trim(),
+        userId: currentUserId,
+        userName: currentUserName,
+        userAvatar: currentUser?.avatar || currentUser?.userAvatar // הוסף את השורה הזאת
+      });
       }
 
       if (result.success) {

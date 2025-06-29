@@ -264,7 +264,7 @@ class GroupService {
     try {
       console.log('Leaving group');
       
-      const response = await this.axiosInstance.delete(`/groups/${groupId}/members/${userId}`);
+      const response = await this.axiosInstance.delete(`/groups/${groupId}/leave/${userId}`);
 
       console.log('Left group successfully');
       return {
@@ -440,6 +440,63 @@ class GroupService {
       const requestUserId = request.userId || request._id || request.id;
       return requestUserId === userId || requestUserId?.toString() === userId?.toString();
     });
+  }
+
+  // Update group settings
+  async updateGroup(groupId, updateData, imageUri = null) {
+    try {
+      console.log('Updating group settings');
+      
+      const formData = new FormData();
+      
+      // Add basic fields
+      formData.append('name', updateData.name);
+      formData.append('description', updateData.description || '');
+      formData.append('category', updateData.category || 'General');
+      formData.append('rules', updateData.rules || '');
+      formData.append('isPrivate', updateData.isPrivate.toString());
+      formData.append('allowMemberPosts', updateData.allowMemberPosts.toString());
+      formData.append('requireApproval', updateData.requireApproval.toString());
+      formData.append('allowInvites', updateData.allowInvites.toString());
+      formData.append('updatedBy', updateData.updatedBy);
+
+      // Add image if provided
+      if (imageUri) {
+        formData.append('image', {
+          uri: imageUri,
+          type: 'image/jpeg',
+          name: 'group-cover.jpg',
+        });
+      }
+
+      const response = await this.axiosInstance.put(`/groups/${groupId}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: 30000,
+      });
+
+      console.log('Group updated successfully');
+      return {
+        success: true,
+        data: response.data
+      };
+      
+    } catch (error) {
+      console.error('Update group error occurred');
+      
+      if (error.code === 'ECONNABORTED') {
+        return {
+          success: false,
+          message: 'Request timeout - please check your connection and try again'
+        };
+      }
+      
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message
+      };
+    }
   }
 
   // ============ GROUP POSTS ============
@@ -642,9 +699,11 @@ class GroupService {
       const response = await this.axiosInstance.post(`/groups/${groupId}/posts/${postId}/comments`, commentData);
 
       console.log('Comment added to group post successfully');
+      
+      // תיקון: החזר את הנתונים בתוך data
       return {
         success: true,
-        data: response.data
+        data: response.data.data || response.data // תמיכה בשני הפורמטים
       };
       
     } catch (error) {
@@ -673,6 +732,53 @@ class GroupService {
       
     } catch (error) {
       console.error('Delete comment from group post error occurred');
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message
+      };
+    }
+  }
+
+  // 🆕 Get group with full member details
+  async getGroupWithMembers(groupId) {
+    try {
+      console.log('Fetching group with full member details');
+      
+      const response = await this.axiosInstance.get(`/groups/${groupId}/members`);
+
+      console.log('Group with members fetched successfully');
+      return {
+        success: true,
+        data: response.data
+      };
+      
+    } catch (error) {
+      console.error('Fetch group with members error occurred');
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message
+      };
+    }
+  }
+
+  // 🆕 Update member role (promote/demote)
+  async updateMemberRole(groupId, memberUserId, newRole, adminUserId) {
+    try {
+      console.log('Updating member role');
+      
+      const response = await this.axiosInstance.put(`/groups/${groupId}/members/${memberUserId}/role`, {
+        role: newRole,
+        adminId: adminUserId
+      });
+
+      console.log('Member role updated successfully');
+      return {
+        success: true,
+        data: response.data
+      };
+      
+    } catch (error) {
+      console.error('Update member role error occurred');
       return {
         success: false,
         message: error.response?.data?.message || error.message

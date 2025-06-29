@@ -308,9 +308,15 @@ export const recipeService = {
       const response = await api.post(`/recipes/${recipeId}/comments`, {
         text: commentData.text,
         userId: commentData.userId,
-        userName: commentData.userName
+        userName: commentData.userName,
+        userAvatar: commentData.userAvatar // הוסף את זה
       });
-      return { success: true, data: response.data };
+      
+      // תיקון: החזר את הנתונים בתוך data
+      return { 
+        success: true, 
+        data: response.data.data || response.data 
+      };
     } catch (error) {
       console.error('❌ Add comment error:', error);
       return {
