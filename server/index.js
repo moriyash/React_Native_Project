@@ -3807,6 +3807,454 @@ app.get('/api/groups/:groupId', async (req, res) => {
 
 // ============ END CHAT ROUTES ============
 
+// ============ PERSONALIZED FEED ENDPOINTS ============
+
+// Get personalized feed for user
+app.get('/api/feed', async (req, res) => {
+  try {
+    console.log('=== Personalized Feed Request ===');
+    
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { userId, type } = req.query;
+    
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+
+    console.log('📥 Building personalized feed for user:', userId, 'type:', type);
+
+    // קבל את המשתמש ורשימת מי שהוא עוקב אחריו
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const following = user.following || [];
+    console.log('👥 User follows:', following.length, 'people');
+
+    // 🔧 תיקון קבלת הקבוצות - תמיכה בכל סוגי ה-ID
+    const userGroups = await Group.find({
+      $or: [
+        { 'members.userId': userId },
+        { 'members.userId': userId.toString() }
+      ]
+    }).select('_id name');
+    
+    const groupIds = userGroups.map(group => group._id);
+    console.log('🏠 User is member of:', groupIds.length, 'groups');
+
+    let allPosts = [];
+
+    if (type === 'following') {
+      // רק פוסטים של אנשים שאני עוקבת אחריהם + הפוסטים שלי
+      console.log('📥 Loading following posts only...');
+      
+      const followingPosts = await Recipe.find({
+        userId: { $in: [...following, userId] }
+      }).sort({ createdAt: -1 });
+      
+      allPosts = followingPosts;
+      
+    } else if (type === 'groups') {
+      // רק פוסטי קבוצות
+      console.log('📥 Loading groups posts only...');
+      
+      const groupPosts = await GroupPost.find({
+        groupId: { $in: groupIds },
+        isApproved: true
+      }).sort({ createdAt: -1 });
+      
+      allPosts = groupPosts;
+      
+    } else {
+      // פיד מותאם אישית מלא - following + groups + own posts
+      console.log('📥 Loading full personalized feed...');
+
+      // 1. פוסטים של אנשים שאני עוקבת אחריהם + הפוסטים שלי
+      const followingPosts = await Recipe.find({
+        userId: { $in: [...following, userId] }
+      }).sort({ createdAt: -1 });
+
+      console.log('📄 Following posts:', followingPosts.length);
+
+      // 2. פוסטי קבוצות מאושרים
+      const groupPosts = await GroupPost.find({
+        groupId: { $in: groupIds },
+        isApproved: true
+      }).sort({ createdAt: -1 });
+
+      console.log('🏠 Group posts:', groupPosts.length);
+
+      // שלב את כל הפוסטים
+      allPosts = [...followingPosts, ...groupPosts];
+    }
+
+    // העשר כל פוסט עם נתוני המשתמש והקבוצה
+    const enrichedPosts = await Promise.all(
+      allPosts.map(async (post) => {
+        try {
+          const postUser = await User.findById(post.userId);
+          let enrichedPost = {
+            ...post.toObject(),
+            userName: postUser ? postUser.fullName : 'Unknown User',
+            userAvatar: postUser ? postUser.avatar : null,
+            userBio: postUser ? postUser.bio : null
+          };
+
+          // אם זה פוסט קבוצה, הוסף מידע על הקבוצה
+          if (post.groupId) {
+            const group = userGroups.find(g => g._id.toString() === post.groupId.toString());
+            enrichedPost.groupName = group ? group.name : 'Unknown Group';
+            enrichedPost.postSource = 'group';
+          } else {
+            enrichedPost.postSource = 'personal';
+          }
+
+          return enrichedPost;
+        } catch (error) {
+          console.error('Error enriching post:', post._id, error);
+          return {
+            ...post.toObject(),
+            userName: 'Unknown User',
+            userAvatar: null,
+            userBio: null,
+            postSource: post.groupId ? 'group' : 'personal'
+          };
+        }
+      })
+    );
+
+    // מיין את כל הפוסטים לפי תאריך (חדש לישן)
+    enrichedPosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    console.log(`✅ Returning ${enrichedPosts.length} posts in personalized feed`);
+    res.json(enrichedPosts);
+
+  } catch (error) {
+    console.error('❌ Get personalized feed error:', error);
+    res.status(500).json({ message: 'Failed to fetch personalized feed' });
+  }
+});
+
+// 🔧 תיקון endpoint הקבוצות
+app.get('/api/groups/my-posts', async (req, res) => {
+  try {
+    console.log('=== User Groups Posts Request ===');
+    console.log('📥 Groups my-posts request - userId:', req.query.userId);
+    
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { userId } = req.query;
+    
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    console.log('📥 Getting group posts for user:', userId);
+
+    // 🔧 תיקון עיקרי - קבל את הקבוצות עם תמיכה בכל סוגי ה-ID
+    let userGroups;
+    try {
+      userGroups = await Group.find({
+        $or: [
+          { 'members.userId': userId },
+          { 'members.userId': userId.toString() }
+        ]
+      }).select('_id name');
+    } catch (error) {
+      console.error('Error finding user groups:', error);
+      return res.status(500).json({ message: 'Failed to find user groups' });
+    }
+    
+    console.log('🏠 User is member of:', userGroups.length, 'groups');
+
+    if (userGroups.length === 0) {
+      console.log('📭 User is not a member of any groups');
+      return res.json([]);
+    }
+
+    // 🔧 תיקון המרת groupIds - השאר אותם כ-ObjectId
+    const groupIds = userGroups.map(group => group._id);
+    console.log('📋 Group IDs:', groupIds);
+
+    // קבל פוסטים מאושרים מהקבוצות
+    const groupPosts = await GroupPost.find({
+      groupId: { $in: groupIds },
+      isApproved: true
+    }).sort({ createdAt: -1 });
+
+    console.log('📄 Found', groupPosts.length, 'group posts');
+
+    // העשר עם נתוני המשתמש והקבוצה
+    const enrichedPosts = await Promise.all(
+      groupPosts.map(async (post) => {
+        try {
+          const postUser = await User.findById(post.userId);
+          const group = userGroups.find(g => g._id.toString() === post.groupId.toString());
+          
+          return {
+            ...post.toObject(),
+            userName: postUser ? postUser.fullName : 'Unknown User',
+            userAvatar: postUser ? postUser.avatar : null,
+            userBio: postUser ? postUser.bio : null,
+            groupName: group ? group.name : 'Unknown Group',
+            postSource: 'group'
+          };
+        } catch (error) {
+          console.error('Error enriching group post:', post._id, error);
+          return {
+            ...post.toObject(),
+            userName: 'Unknown User',
+            userAvatar: null,
+            userBio: null,
+            groupName: 'Unknown Group',
+            postSource: 'group'
+          };
+        }
+      })
+    );
+
+    console.log(`✅ Returning ${enrichedPosts.length} group posts`);
+    res.json(enrichedPosts);
+
+  } catch (error) {
+    console.error('❌ Get user groups posts error:', error);
+    res.status(500).json({ message: 'Failed to fetch user groups posts' });
+  }
+});
+
+// Get user's following posts only
+app.get('/api/following/posts', async (req, res) => {
+  try {
+    console.log('=== Following Posts Request ===');
+    
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { userId } = req.query;
+    
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+
+    console.log('📥 Getting following posts for user:', userId);
+
+    // קבל את המשתמש ורשימת מי שהוא עוקב אחריו
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const following = user.following || [];
+    console.log('👥 User follows:', following.length, 'people');
+
+    if (following.length === 0) {
+      console.log('📭 User is not following anyone');
+      return res.json([]);
+    }
+
+    // קבל פוסטים של אנשים שהוא עוקב אחריהם + הפוסטים שלו
+    const followingPosts = await Recipe.find({
+      userId: { $in: [...following, userId] }
+    }).sort({ createdAt: -1 });
+
+    console.log('📄 Found', followingPosts.length, 'following posts');
+
+    // העשר עם נתוני המשתמש
+    const enrichedPosts = await Promise.all(
+      followingPosts.map(async (post) => {
+        try {
+          const postUser = await User.findById(post.userId);
+          
+          return {
+            ...post.toObject(),
+            userName: postUser ? postUser.fullName : 'Unknown User',
+            userAvatar: postUser ? postUser.avatar : null,
+            userBio: postUser ? postUser.bio : null,
+            postSource: 'personal'
+          };
+        } catch (error) {
+          console.error('Error enriching following post:', post._id, error);
+          return {
+            ...post.toObject(),
+            userName: 'Unknown User',
+            userAvatar: null,
+            userBio: null,
+            postSource: 'personal'
+          };
+        }
+      })
+    );
+
+    console.log(`✅ Returning ${enrichedPosts.length} following posts`);
+    res.json(enrichedPosts);
+
+  } catch (error) {
+    console.error('❌ Get following posts error:', error);
+    res.status(500).json({ message: 'Failed to fetch following posts' });
+  }
+});
+
+// ============ תיקון LIKE/UNLIKE ENDPOINTS לתמיכה ב-userId בגוף הבקשה ============
+
+// Like recipe - מעודכן
+app.post('/api/recipes/:id/like', async (req, res) => {
+  try {
+    console.log('👍 Liking recipe...');
+    
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid recipe ID' });
+    }
+
+    // קבל userId מהגוף או מהheaders (לתאימות לאחור)
+    const userId = req.body.userId || req.headers['x-user-id'] || 'temp-user-id';
+    
+    const recipe = await Recipe.findById(req.params.id);
+    if (!recipe) {
+      return res.status(404).json({ message: 'Recipe not found' });
+    }
+
+    if (!recipe.likes) recipe.likes = [];
+    
+    // בדוק שעוד לא עשה לייק
+    if (recipe.likes.includes(userId)) {
+      return res.status(400).json({ message: 'Already liked this recipe' });
+    }
+    
+    recipe.likes.push(userId);
+    await recipe.save();
+    
+    console.log('✅ Recipe liked successfully');
+    res.json({ 
+      message: 'Recipe liked successfully',
+      likes: recipe.likes,
+      likesCount: recipe.likes.length 
+    });
+  } catch (error) {
+    console.error('❌ Like recipe error:', error);
+    res.status(500).json({ message: 'Failed to like recipe' });
+  }
+});
+
+// Unlike recipe - מעודכן
+app.delete('/api/recipes/:id/like', async (req, res) => {
+  try {
+    console.log('👎 Unliking recipe...');
+    
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid recipe ID' });
+    }
+
+    // קבל userId מהגוף או מהheaders (לתאימות לאחור)  
+    const userId = req.body.userId || req.headers['x-user-id'] || 'temp-user-id';
+    
+    const recipe = await Recipe.findById(req.params.id);
+    if (!recipe) {
+      return res.status(404).json({ message: 'Recipe not found' });
+    }
+    
+    if (!recipe.likes || !recipe.likes.includes(userId)) {
+      return res.status(400).json({ message: 'Recipe not liked yet' });
+    }
+    
+    recipe.likes = recipe.likes.filter(id => id !== userId);
+    await recipe.save();
+    
+    console.log('✅ Recipe unliked successfully');
+    res.json({ 
+      message: 'Recipe unliked successfully',
+      likes: recipe.likes,
+      likesCount: recipe.likes.length 
+    });
+  } catch (error) {
+    console.error('❌ Unlike recipe error:', error);
+    res.status(500).json({ message: 'Failed to unlike recipe' });
+  }
+});
+
+// ============ UTILITY ENDPOINTS ============
+
+// Get user's feed stats
+app.get('/api/feed/stats', async (req, res) => {
+  try {
+    if (!isMongoConnected()) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
+
+    const { userId } = req.query;
+    
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Valid user ID is required' });
+    }
+
+    // קבל את המשתמש
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const following = user.following || [];
+    
+    // 🔧 תיקון קבלת הקבוצות גם כאן
+    const userGroups = await Group.find({
+      $or: [
+        { 'members.userId': userId },
+        { 'members.userId': userId.toString() }
+      ]
+    });
+
+    // ספור פוסטים
+    const [followingPostsCount, groupPostsCount, ownPostsCount] = await Promise.all([
+      Recipe.countDocuments({ userId: { $in: following } }),
+      GroupPost.countDocuments({ 
+        groupId: { $in: userGroups.map(g => g._id) }, 
+        isApproved: true 
+      }),
+      Recipe.countDocuments({ userId })
+    ]);
+
+    const stats = {
+      followingCount: following.length,
+      groupsCount: userGroups.length,
+      followingPostsCount,
+      groupPostsCount,
+      ownPostsCount,
+      totalFeedPosts: followingPostsCount + groupPostsCount + ownPostsCount
+    };
+
+    console.log('📊 Feed stats for user:', userId, stats);
+    res.json(stats);
+
+  } catch (error) {
+    console.error('Get feed stats error:', error);
+    res.status(500).json({ message: 'Failed to get feed stats' });
+  }
+});
+
+console.log('✅ Personalized feed endpoints added successfully');
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

@@ -97,6 +97,10 @@ const PostComponent = ({
   
   const postId = safePost._id || safePost.id;
 
+  // 🆕 זיהוי אם זה פוסט קבוצה
+  const isActualGroupPost = (isGroupPost && groupId) || safePost.groupId || safePost.postSource === 'group';
+  const effectiveGroupId = groupId || safePost.groupId;
+
   const formatTime = (minutes) => {
     if (!minutes || isNaN(minutes)) return '0m';
     const numMinutes = parseInt(minutes);
@@ -136,7 +140,7 @@ const PostComponent = ({
     }
   };
 
-  // עדכון מיידי של הלייק
+  // 🔧 תיקון פונקציית הלייק
   const handleLike = async () => {
     if (!postId) {
       console.error('❌ No postId available');
@@ -155,7 +159,13 @@ const PostComponent = ({
       return;
     }
 
-    console.log('👍 Attempting to like/unlike:', { postId, currentUserId, isLiked, isGroupPost, groupId });
+    console.log('👍 Attempting to like/unlike:', { 
+      postId, 
+      currentUserId, 
+      isLiked, 
+      isActualGroupPost, 
+      effectiveGroupId 
+    });
     setIsSubmittingLike(true);
 
     // עדכון אופטימיסטי - עדכן מיידית לפני השרת
@@ -169,25 +179,25 @@ const PostComponent = ({
     try {
       let result;
       
-      if (isGroupPost && groupId) {
+      if (isActualGroupPost && effectiveGroupId) {
         // פוסט של קבוצה - נשתמש ב-groupService
         console.log('🏠 Using group service for like/unlike...');
         if (isLiked) {
           console.log('👎 Unliking group post...');
-          result = await groupService.unlikeGroupPost(groupId, postId, currentUserId);
+          result = await groupService.unlikeGroupPost(effectiveGroupId, postId, currentUserId);
         } else {
           console.log('👍 Liking group post...');
-          result = await groupService.likeGroupPost(groupId, postId, currentUserId);
+          result = await groupService.likeGroupPost(effectiveGroupId, postId, currentUserId);
         }
       } else {
-        // פוסט רגיל - נשתמש ב-recipeService (הקוד הקיים)
+        // פוסט רגיל - נשתמש ב-recipeService
         console.log('🍳 Using recipe service for like/unlike...');
         if (isLiked) {
           console.log('👎 Unliking recipe...');
-          result = await recipeService.unlikeRecipe(postId);
+          result = await recipeService.unlikeRecipe(postId, currentUserId);
         } else {
           console.log('👍 Liking recipe...');
-          result = await recipeService.likeRecipe(postId);
+          result = await recipeService.likeRecipe(postId, currentUserId);
         }
       }
 
@@ -221,6 +231,7 @@ const PostComponent = ({
     }
   };
 
+  // 🔧 תיקון פונקציית התגובות
   const handleAddComment = async () => {
     if (!newComment.trim()) {
       Alert.alert('Empty Comment', 'Please write something delicious!');
@@ -236,30 +247,36 @@ const PostComponent = ({
       return;
     }
 
-    console.log('💬 Adding comment:', { postId, currentUserId, currentUserName, isGroupPost, groupId });
+    console.log('💬 Adding comment:', { 
+      postId, 
+      currentUserId, 
+      currentUserName, 
+      isActualGroupPost, 
+      effectiveGroupId 
+    });
     setIsSubmittingComment(true);
 
     try {
       let result;
       
-      if (isGroupPost && groupId) {
+      if (isActualGroupPost && effectiveGroupId) {
         // תגובה לפוסט של קבוצה
         console.log('🏠 Adding comment to group post...');
-        result = await groupService.addCommentToGroupPost(groupId, postId, {
-        text: newComment.trim(),
-        userId: currentUserId,
-        userName: currentUserName,
-        userAvatar: currentUser?.avatar || currentUser?.userAvatar // הוסף את השורה הזאת
-      });
+        result = await groupService.addCommentToGroupPost(effectiveGroupId, postId, {
+          text: newComment.trim(),
+          userId: currentUserId,
+          userName: currentUserName,
+          userAvatar: currentUser?.avatar || currentUser?.userAvatar
+        });
       } else {
         // תגובה לפוסט רגיל
         console.log('🍳 Adding comment to regular post...');
         result = await recipeService.addComment(postId, {
-        text: newComment.trim(),
-        userId: currentUserId,
-        userName: currentUserName,
-        userAvatar: currentUser?.avatar || currentUser?.userAvatar // הוסף את השורה הזאת
-      });
+          text: newComment.trim(),
+          userId: currentUserId,
+          userName: currentUserName,
+          userAvatar: currentUser?.avatar || currentUser?.userAvatar
+        });
       }
 
       if (result.success) {
@@ -284,14 +301,15 @@ const PostComponent = ({
     }
   };
 
+  // 🔧 תיקון פונקציית מחיקת תגובות
   const handleDeleteComment = async (commentId) => {
     try {
       let result;
       
-      if (isGroupPost && groupId) {
+      if (isActualGroupPost && effectiveGroupId) {
         // מחיקת תגובה מפוסט של קבוצה
         console.log('🏠 Deleting comment from group post...');
-        result = await groupService.deleteCommentFromGroupPost(groupId, postId, commentId, currentUserId);
+        result = await groupService.deleteCommentFromGroupPost(effectiveGroupId, postId, commentId, currentUserId);
       } else {
         // מחיקת תגובה מפוסט רגיל
         console.log('🍳 Deleting comment from regular post...');
@@ -333,8 +351,8 @@ const PostComponent = ({
           servings: safePost.servings,
           image: safePost.image
         },
-        isGroupPost,
-        groupId
+        isGroupPost: isActualGroupPost,
+        groupId: effectiveGroupId
       });
     }
   };

@@ -22,9 +22,9 @@ import PostComponent from '../../common/PostComponent';
 import CreatePostComponent from '../../common/CreatePostComponent';
 import SharePostComponent from '../../common/SharePostComponent';
 import UserAvatar from '../../common/UserAvatar';
-import { chatService } from '../../../services/chatServices'; // 馃啎 爪'讗讟
+import { chatService } from '../../../services/chatServices';
 
-// 爪讘注讬 FlavorWorld
+// צבעי FlavorWorld
 const FLAVORWORLD_COLORS = {
   primary: '#F5A623',
   secondary: '#4ECDC4',
@@ -50,19 +50,20 @@ const HomeScreen = ({ navigation }) => {
   const [sharePost, setSharePost] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [unreadChatCount, setUnreadChatCount] = useState(0); // 馃啎 诪讜谞讛 爪'讗讟
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [feedType, setFeedType] = useState('personalized'); // 🆕 סוג הפיד
   
-  // 诪讬讜谉 讜诪住谞谞讬诐
+  // מיון ומסננים
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedMeatType, setSelectedMeatType] = useState('all');
   const [selectedCookingTime, setSelectedCookingTime] = useState('all');
-  const [sortBy, setSortBy] = useState('newest'); // newest, oldest, popular
+  const [sortBy, setSortBy] = useState('newest');
 
-  // 拽讟讙讜专讬讜转 讝诪讬谞讜转 - 诪讛拽讜讘抓 CreatePostComponent
+  // קטגוריות זמינות
   const categories = [
     'all', 'Asian', 'Italian', 'Mexican', 'Indian', 'Mediterranean', 
     'American', 'French', 'Chinese', 'Japanese', 'Thai', 
-    'Middle Eastern', 'Greek', 'Spanish', 'Korean', 'Vietnamese'
+    'Middle Eastern', 'Greek', 'Spanish', 'Korean', 'Vietnamese', 'Dessert'
   ];
   
   const meatTypes = [
@@ -78,7 +79,14 @@ const HomeScreen = ({ navigation }) => {
     { key: 'very_long', label: 'Over 2 hours', min: 120 }
   ];
 
-  // 馃啎 驻讜谞拽爪讬讜转 爪'讗讟
+  // 🆕 סוגי פיד
+  const feedTypes = [
+    { key: 'personalized', label: 'Following & Groups', icon: 'people-outline' },
+    { key: 'all', label: 'All Posts', icon: 'globe-outline' },
+    { key: 'following', label: 'Following Only', icon: 'heart-outline' }
+  ];
+
+  // פונקציות צ'אט
   const loadUnreadChatCount = useCallback(async () => {
     try {
       const result = await chatService.getUnreadChatsCount();
@@ -98,7 +106,6 @@ const HomeScreen = ({ navigation }) => {
     }
   }, [currentUser, loadUnreadChatCount]);
 
-  // 馃啎 驻转讬讞转 诪住讱 讛爪'讗讟讬诐
   const handleOpenChats = useCallback(() => {
     navigation.navigate('ChatList');
   }, [navigation]);
@@ -112,25 +119,25 @@ const HomeScreen = ({ navigation }) => {
     );
   } 
 
-  // 驻讜谞拽爪讬讛 诇诪讬讜谉 讜诪住谞谉
+  // פונקציה למיון ומסנן
   const applyFiltersAndSort = useCallback((postsArray) => {
     let filtered = [...postsArray];
 
-    // 诪住谞谉 拽讟讙讜专讬讛
+    // מסנן קטגוריה
     if (selectedCategory !== 'all') {
       filtered = filtered.filter(post => 
         post.category?.toLowerCase() === selectedCategory.toLowerCase()
       );
     }
 
-    // 诪住谞谉 住讜讙 讘砖专/诪讟讘讞
+    // מסנן סוג בשר/מטבח
     if (selectedMeatType !== 'all') {
       filtered = filtered.filter(post => 
         post.meatType?.toLowerCase() === selectedMeatType.toLowerCase()
       );
     }
 
-    // 诪住谞谉 讝诪谉 讛讻谞讛
+    // מסנן זמן הכנה
     if (selectedCookingTime !== 'all') {
       const timeFilter = cookingTimes.find(t => t.key === selectedCookingTime);
       if (timeFilter) {
@@ -148,7 +155,7 @@ const HomeScreen = ({ navigation }) => {
       }
     }
 
-    // 诪讬讜谉
+    // מיון
     switch (sortBy) {
       case 'oldest':
         filtered.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
@@ -165,15 +172,61 @@ const HomeScreen = ({ navigation }) => {
     return filtered;
   }, [selectedCategory, selectedMeatType, selectedCookingTime, sortBy]);
 
-  // 注讚讻讜谉 讛诪住谞谉 讻讗砖专 诪砖转谞讬诐 讛驻专诪讟专讬诐
+  // עדכון המסנן כאשר משתנים הפרמטרים
   useEffect(() => {
     const filtered = applyFiltersAndSort(posts);
     setFilteredPosts(filtered);
   }, [posts, applyFiltersAndSort]);
 
+  // 🆕 טעינת פוסטים לפי סוג הפיד
   const loadPosts = useCallback(async () => {
-    try {
-      const result = await recipeService.getAllRecipes();
+      try {
+        const userId = currentUser?.id || currentUser?._id;
+        
+        if (!userId) {
+          console.error('No user ID available - user probably logged out');
+          setLoading(false);
+          setRefreshing(false);
+          // אל תחזיר, תטען פוסטים כלליים במקום
+          const result = await recipeService.getAllRecipes();
+          if (result.success) {
+            const postsArray = Array.isArray(result.data) ? result.data : [];
+            const formattedPosts = postsArray.map(post => ({
+              ...post,
+              _id: post._id || post.id,
+              userName: post.userName || 'Anonymous',
+              userAvatar: post.userAvatar || null,
+              likes: Array.isArray(post.likes) ? post.likes : [],
+              comments: Array.isArray(post.comments) ? post.comments : [],
+              createdAt: post.createdAt || new Date().toISOString(),
+              postSource: 'personal',
+              groupName: null,
+              isLiked: false
+            }));
+            setPosts(formattedPosts);
+          }
+          return;
+        }
+
+      let result;
+      
+      switch (feedType) {
+        case 'personalized':
+          console.log('📥 Loading personalized feed...');
+          result = await recipeService.getFeed(userId);
+          break;
+          
+        case 'following':
+          console.log('📥 Loading following posts...');
+          result = await recipeService.getFollowingPosts(userId);
+          break;
+          
+        case 'all':
+        default:
+          console.log('📥 Loading all posts...');
+          result = await recipeService.getAllRecipes();
+          break;
+      }
       
       if (result.success) {
         const postsArray = Array.isArray(result.data) ? result.data : [];
@@ -186,25 +239,40 @@ const HomeScreen = ({ navigation }) => {
           likes: Array.isArray(post.likes) ? post.likes : [],
           comments: Array.isArray(post.comments) ? post.comments : [],
           createdAt: post.createdAt || post.created_at || new Date().toISOString(),
+          // 🆕 הוסף מידע על מקור הפוסט
+          postSource: post.groupId ? 'group' : 'personal',
+          groupName: post.groupName || null,
+          // 🆕 הוסף מידע על סטטוס לייק
+          isLiked: post.likes ? post.likes.includes(userId) : false
         }));
         
+        console.log(`✅ Loaded ${formattedPosts.length} posts for feed type: ${feedType}`);
         setPosts(formattedPosts);
       } else {
-        Alert.alert('Error', `Failed to load recipes: ${result.message}`);
+        Alert.alert('Error', `Failed to load posts: ${result.message}`);
       }
     } catch (error) {
-      Alert.alert('Error', `Failed to load recipes: ${error.message}`);
+      console.error('❌ Load posts error:', error);
+      Alert.alert('Error', `Failed to load posts: ${error.message}`);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [feedType, currentUser]);
 
   useEffect(() => {
-    loadPosts();
-  }, [loadPosts]);
+    // רק אם יש משתמש מחובר
+    if (currentUser?.id || currentUser?._id) {
+      loadPosts();
+    } else {
+      // אם אין משתמש, נקה הכל
+      setPosts([]);
+      setFilteredPosts([]);
+      setLoading(false);
+    }
+  }, [currentUser, feedType]);
 
-  // 馃啎 讗转讞讜诇 爪'讗讟 讘注转 讟注讬谞转 讛拽讜诪驻讜谞谞讟讛
+  // אתחול צ'אט בעת טעינת הקומפוננטה
   useEffect(() => {
     if (currentUser?.id || currentUser?._id) {
       initializeChatService();
@@ -214,32 +282,12 @@ const HomeScreen = ({ navigation }) => {
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     loadPosts();
-    loadUnreadChatCount(); // 馃啎 专注谞谉 讙诐 讗转 诪住驻专 讛讛讜讚注讜转
+    loadUnreadChatCount();
   }, [loadPosts, loadUnreadChatCount]);
 
   const handleRefreshData = useCallback(async () => {
-    try {
-      const result = await recipeService.getAllRecipes();
-      
-      if (result.success) {
-        const postsArray = Array.isArray(result.data) ? result.data : [];
-        
-        const formattedPosts = postsArray.map(post => ({
-          ...post,
-          _id: post._id || post.id,
-          userName: post.userName || post.user?.name || post.author?.name || 'Anonymous',
-          userAvatar: post.userAvatar || post.user?.avatar || post.author?.avatar || null,
-          likes: Array.isArray(post.likes) ? post.likes : [],
-          comments: Array.isArray(post.comments) ? post.comments : [],
-          createdAt: post.createdAt || post.created_at || new Date().toISOString(),
-        }));
-        
-        setPosts(formattedPosts);
-      }
-    } catch (error) {
-      console.error('Refresh error:', error);
-    }
-  }, []);
+    await loadPosts();
+  }, [loadPosts]);
 
   const handleLogout = useCallback(() => {
     Alert.alert(
@@ -252,7 +300,6 @@ const HomeScreen = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              // 馃啎 谞转拽 讗转 砖讬专讜转 讛爪'讗讟
               chatService.disconnect();
               await logout();
             } catch (error) {
@@ -340,11 +387,36 @@ const HomeScreen = ({ navigation }) => {
     handleShareModalClose();
   }, [handleShareModalClose]);
 
+  // 🆕 רינדור בוחר סוג פיד
+  const renderFeedTypeSelector = () => (
+    <View style={styles.feedTypeContainer}>
+      <Text style={styles.feedTypeTitle}>What would you like to see?</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.feedTypeScroll}>
+        {feedTypes.map(type => (
+          <TouchableOpacity
+            key={type.key}
+            style={[styles.feedTypeChip, feedType === type.key && styles.activeFeedTypeChip]}
+            onPress={() => setFeedType(type.key)}
+          >
+            <Ionicons 
+              name={type.icon} 
+              size={18} 
+              color={feedType === type.key ? FLAVORWORLD_COLORS.white : FLAVORWORLD_COLORS.primary} 
+            />
+            <Text style={[styles.feedTypeChipText, feedType === type.key && styles.activeFeedTypeChipText]}>
+              {type.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+
   const renderFilters = () => (
     showFilters && (
       <View style={styles.filtersContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {/* 诪讬讜谉 */}
+          {/* מיון */}
           <View style={styles.filterGroup}>
             <Text style={styles.filterLabel}>Sort:</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -366,7 +438,7 @@ const HomeScreen = ({ navigation }) => {
             </ScrollView>
           </View>
 
-          {/* 拽讟讙讜专讬讜转 */}
+          {/* קטגוריות */}
           <View style={styles.filterGroup}>
             <Text style={styles.filterLabel}>Category:</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -384,7 +456,7 @@ const HomeScreen = ({ navigation }) => {
             </ScrollView>
           </View>
 
-          {/* 住讜讙 讘砖专/诪讟讘讞 */}
+          {/* סוג בשר/מטבח */}
           <View style={styles.filterGroup}>
             <Text style={styles.filterLabel}>Type:</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -402,7 +474,7 @@ const HomeScreen = ({ navigation }) => {
             </ScrollView>
           </View>
 
-          {/* 讝诪谉 讛讻谞讛 */}
+          {/* זמן הכנה */}
           <View style={styles.filterGroup}>
             <Text style={styles.filterLabel}>Prep Time:</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -421,7 +493,7 @@ const HomeScreen = ({ navigation }) => {
           </View>
         </ScrollView>
 
-        {/* 讻驻转讜专 谞讬拽讜讬 讻诇 讛诪住谞谞讬诐 */}
+        {/* כפתור ניקוי כל המסננים */}
         {getActiveFiltersCount() > 0 && (
           <TouchableOpacity style={styles.clearFiltersButton} onPress={clearAllFilters}>
             <Ionicons name="refresh" size={16} color={FLAVORWORLD_COLORS.white} />
@@ -429,7 +501,7 @@ const HomeScreen = ({ navigation }) => {
           </TouchableOpacity>
         )}
 
-        {/* 转讜爪讗讜转 */}
+        {/* תוצאות */}
         <View style={styles.searchStats}>
           <Text style={styles.searchStatsText}>
             {getActiveFiltersCount() > 0 ? `${filteredPosts.length} recipes found` : `${posts.length} total recipes`}
@@ -481,6 +553,14 @@ const HomeScreen = ({ navigation }) => {
   const renderPost = useCallback(({ item, index }) => {
     return (
       <View style={styles.postContainer}>
+        {/* 🆕 הוסף תווית מקור הפוסט */}
+        {item.postSource === 'group' && item.groupName && (
+          <View style={styles.postSourceLabel}>
+            <Ionicons name="chatbubbles" size={14} color={FLAVORWORLD_COLORS.secondary} />
+            <Text style={styles.postSourceText}>from {item.groupName}</Text>
+          </View>
+        )}
+        
         <PostComponent
           post={item || {}}
           navigation={navigation}
@@ -498,21 +578,29 @@ const HomeScreen = ({ navigation }) => {
       <View style={styles.emptyContainer}>
         <View style={styles.emptyIcon}>
           <Ionicons 
-            name={getActiveFiltersCount() > 0 ? "options-outline" : "restaurant-outline"} 
+            name={getActiveFiltersCount() > 0 ? "options-outline" : 
+                  feedType === 'personalized' ? "people-outline" :
+                  feedType === 'following' ? "heart-outline" : "restaurant-outline"}
             size={80} 
             color={FLAVORWORLD_COLORS.textLight} 
           />
         </View>
         <Text style={styles.emptyTitle}>
-          {getActiveFiltersCount() > 0 ? 'No Recipes Found' : 'No Recipes Yet!'}
+          {getActiveFiltersCount() > 0 ? 'No Recipes Found' :
+           feedType === 'personalized' ? 'Your Feed is Empty' :
+           feedType === 'following' ? 'No Posts from Following' : 'No Recipes Yet!'}
         </Text>
         <Text style={styles.emptySubtitle}>
           {getActiveFiltersCount() > 0
             ? 'No recipes match your filter criteria. Try adjusting your filters.'
+            : feedType === 'personalized'
+            ? 'Follow some chefs or join groups to see their amazing recipes here!'
+            : feedType === 'following'
+            ? 'Follow some amazing chefs to see their recipes in your feed.'
             : 'Be the first to share your amazing recipe with the FlavorWorld community'
           }
         </Text>
-        {getActiveFiltersCount() === 0 && (
+        {(getActiveFiltersCount() === 0 && feedType !== 'following' && feedType !== 'groups') && (
           <TouchableOpacity 
             style={styles.emptyButton}
             onPress={() => setShowCreateModal(true)}
@@ -520,18 +608,29 @@ const HomeScreen = ({ navigation }) => {
             <Text style={styles.emptyButtonText}>Share Recipe</Text>
           </TouchableOpacity>
         )}
+        {feedType === 'following' && (
+          <TouchableOpacity 
+            style={styles.emptyButton}
+            onPress={handleNavigateToSearch}
+          >
+            <Text style={styles.emptyButtonText}>Find Chefs to Follow</Text>
+          </TouchableOpacity>
+        )}
       </View>
     )
-  ), [loading, getActiveFiltersCount]);
+  ), [loading, getActiveFiltersCount, feedType, handleNavigateToSearch, navigation]);
 
   const renderLoader = useCallback(() => (
     loading && (
       <View style={styles.loaderContainer}>
         <ActivityIndicator size="large" color={FLAVORWORLD_COLORS.primary} />
-        <Text style={styles.loaderText}>Loading delicious recipes...</Text>
+        <Text style={styles.loaderText}>
+          {feedType === 'personalized' ? 'Loading your personalized feed...' :
+           feedType === 'following' ? 'Loading posts from chefs you follow...' : 'Loading delicious recipes...'}
+        </Text>
       </View>
     )
-  ), [loading]);
+  ), [loading, feedType]);
 
   const ItemSeparatorComponent = useCallback(() => (
     <View style={styles.separator} />
@@ -541,11 +640,11 @@ const HomeScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={FLAVORWORLD_COLORS.white} />
       
-      {/* Header 注诇讬讜谉 谞拽讬 */}
+      {/* Header עליון נקי */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>FlavorWorld</Text>
         <View style={styles.headerButtons}>
-          {/* 讻驻转讜专 讞讬驻讜砖 */}
+          {/* כפתור חיפוש */}
           <TouchableOpacity 
             style={styles.headerButton}
             onPress={handleNavigateToSearch}
@@ -553,7 +652,7 @@ const HomeScreen = ({ navigation }) => {
             <Ionicons name="search-outline" size={24} color={FLAVORWORLD_COLORS.accent} />
           </TouchableOpacity>
           
-          {/* 讻驻转讜专 诪住谞谞讬诐 */}
+          {/* כפתור מסננים */}
           <TouchableOpacity 
             style={[styles.headerButton, showFilters && styles.activeButton]}
             onPress={() => setShowFilters(!showFilters)}
@@ -570,14 +669,17 @@ const HomeScreen = ({ navigation }) => {
             )}
           </TouchableOpacity>
           
-          {/* 讻驻转讜专 讬爪讬讗讛 */}
+          {/* כפתור יצירה */}
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={24} color={FLAVORWORLD_COLORS.danger} />
           </TouchableOpacity>
         </View>
       </View>
       
-      {/* 诪住谞谞讬诐 */}
+      {/* 🆕 בוחר סוג פיד */}
+      {renderFeedTypeSelector()}
+      
+      {/* מסננים */}
       {renderFilters()}
       
       <FlatList
@@ -607,7 +709,7 @@ const HomeScreen = ({ navigation }) => {
       <View style={styles.bottomNavigation}>
         <TouchableOpacity 
           style={styles.bottomNavItem}
-          onPress={() => {/* 讛讜住祝 驻讛 诇讜讙讬拽讛 砖诇 讛转专讗讜转 */}}
+          onPress={() => {/* הוסף פה לוגיקה של התראות */}}
         >
           <View style={styles.bottomNavIcon}>
             <Ionicons name="notifications-outline" size={24} color={FLAVORWORLD_COLORS.text} />
@@ -647,7 +749,7 @@ const HomeScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* 诪讜讚诇 讬爪讬专转 驻讜住讟 诪诇讗 */}
+      {/* מודל יצירת פוסט מלא */}
       {showCreateModal && (
         <Modal
           visible={showCreateModal}
@@ -677,7 +779,7 @@ const HomeScreen = ({ navigation }) => {
         </Modal>
       )}
 
-      {/* 诪讜讚诇 砖讬转讜祝 诪讜转讗诐 讗讬砖讬转 */}
+      {/* מודל שיתוף מותאם אישית */}
       {showShareModal && sharePost && (
         <SharePostComponent
           visible={showShareModal}
@@ -754,9 +856,68 @@ const styles = StyleSheet.create({
     backgroundColor: FLAVORWORLD_COLORS.background,
     borderRadius: 20,
   },
+  // 🆕 סטיילים לבוחר סוג פיד
+  feedTypeContainer: {
+    backgroundColor: FLAVORWORLD_COLORS.white,
+    borderBottomWidth: 1,
+    borderBottomColor: FLAVORWORLD_COLORS.border,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  feedTypeTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: FLAVORWORLD_COLORS.text,
+    marginBottom: 8,
+  },
+  feedTypeScroll: {
+    flexDirection: 'row',
+  },
+  feedTypeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: FLAVORWORLD_COLORS.background,
+    borderRadius: 25,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: FLAVORWORLD_COLORS.primary,
+  },
+  activeFeedTypeChip: {
+    backgroundColor: FLAVORWORLD_COLORS.primary,
+    borderColor: FLAVORWORLD_COLORS.primary,
+  },
+  feedTypeChipText: {
+    fontSize: 14,
+    color: FLAVORWORLD_COLORS.primary,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  activeFeedTypeChipText: {
+    color: FLAVORWORLD_COLORS.white,
+  },
   flatListContainer: {
     flex: 1,
-    marginBottom: 80, // 诪拽讜诐 诇bottom navigation
+    marginBottom: 80, // מקום לbottom navigation
+  },
+  // 🆕 סטיילים למקור הפוסט
+  postSourceLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: FLAVORWORLD_COLORS.background,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 15,
+    alignSelf: 'flex-start',
+  },
+  postSourceText: {
+    fontSize: 12,
+    color: FLAVORWORLD_COLORS.secondary,
+    fontWeight: '600',
+    marginLeft: 4,
   },
   // Bottom Navigation Styles
   bottomNavigation: {

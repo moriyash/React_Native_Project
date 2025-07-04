@@ -54,6 +54,57 @@ export const recipeService = {
     }
   },
 
+  // 🆕 קבלת פיד מותאם אישית
+  getFeed: async (userId) => {
+    try {
+      console.log('📥 Fetching personalized feed for user:', userId);
+      const response = await api.get(`/feed?userId=${userId}`);
+      console.log('📥 Feed response:', response.data?.length || 0, 'posts');
+      
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('❌ Get feed error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || 'Failed to fetch feed'
+      };
+    }
+  },
+
+  // 🆕 קבלת פוסטי קבוצות של המשתמש
+  getUserGroupsPosts: async (userId) => {
+    try {
+      console.log('📥 Fetching user groups posts for:', userId);
+      const response = await api.get(`/groups/my-posts?userId=${userId}`);
+      console.log('📥 Groups posts response:', response.data?.length || 0, 'posts');
+      
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('❌ Get user groups posts error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || 'Failed to fetch groups posts'
+      };
+    }
+  },
+
+  // 🆕 קבלת פוסטים של אנשים שאני עוקבת אחריהם
+  getFollowingPosts: async (userId) => {
+    try {
+      console.log('📥 Fetching following posts for user:', userId);
+      const response = await api.get(`/following/posts?userId=${userId}`);
+      console.log('📥 Following posts response:', response.data?.length || 0, 'posts');
+      
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('❌ Get following posts error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || 'Failed to fetch following posts'
+      };
+    }
+  },
+
   createRecipe: async (recipeData) => {
     try {
       console.log('📤 Creating recipe on server...', recipeData.title);
@@ -153,13 +204,22 @@ export const recipeService = {
     }
   },
 
-  getAllRecipes: async () => {
+  // עדכנתי לקריאה מהפיד החדש
+  getAllRecipes: async (userId = null) => {
     try {
-      console.log('📥 Fetching all recipes from server...');
-      const response = await api.get('/recipes');
-      console.log('📥 Server response:', response.data?.length || 0, 'recipes');
-      
-      return { success: true, data: response.data };
+      if (userId) {
+        // אם יש userId, קבל פיד מותאם אישית
+        console.log('📥 Fetching personalized feed...');
+        const result = await recipeService.getFeed(userId);
+        return result;
+      } else {
+        // אחרת, קבל את כל המתכונים (לתאימות לאחור)
+        console.log('📥 Fetching all recipes from server...');
+        const response = await api.get('/recipes');
+        console.log('📥 Server response:', response.data?.length || 0, 'recipes');
+        
+        return { success: true, data: response.data };
+      }
     } catch (error) {
       console.error('❌ Get recipes error:', error);
       return {
@@ -181,7 +241,6 @@ export const recipeService = {
     }
   },
 
-  // 🔧 תיקון פונקציית updateRecipe
   updateRecipe: async (recipeId, updateData, imageUri = null) => {
     try {
       console.log('🔄 Updating recipe...', recipeId);
@@ -213,12 +272,11 @@ export const recipeService = {
         formData.append('image', updateData.image);
       }
 
-      // 🔧 השתמש ב-api (axios) במקום fetch
       const response = await api.put(`/recipes/${recipeId}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
-        timeout: 120000, // 2 דקות לעדכון
+        timeout: 120000,
         onUploadProgress: (progressEvent) => {
           const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           console.log(`📊 Update progress: ${progress}%`);
@@ -270,10 +328,12 @@ export const recipeService = {
     }
   },
 
-  likeRecipe: async (recipeId) => {
+  likeRecipe: async (recipeId, userId) => {
     try {
-      console.log('👍 Liking recipe on server:', recipeId);
-      const response = await api.post(`/recipes/${recipeId}/like`);
+      console.log('👍 Liking recipe on server:', recipeId, 'by user:', userId);
+      const response = await api.post(`/recipes/${recipeId}/like`, {
+        userId: userId // הוסף את ה-userId לגוף הבקשה
+      });
       console.log('✅ Like response:', response.data);
       return { success: true, data: response.data };
     } catch (error) {
@@ -286,10 +346,12 @@ export const recipeService = {
     }
   },
 
-  unlikeRecipe: async (recipeId) => {
+  unlikeRecipe: async (recipeId, userId) => {
     try {
-      console.log('👎 Unliking recipe on server:', recipeId);
-      const response = await api.delete(`/recipes/${recipeId}/like`);
+      console.log('👎 Unliking recipe on server:', recipeId, 'by user:', userId);
+      const response = await api.delete(`/recipes/${recipeId}/like`, {
+        data: { userId: userId } // הוסף את ה-userId לגוף הבקשה
+      });
       console.log('✅ Unlike response:', response.data);
       return { success: true, data: response.data };
     } catch (error) {
@@ -309,10 +371,9 @@ export const recipeService = {
         text: commentData.text,
         userId: commentData.userId,
         userName: commentData.userName,
-        userAvatar: commentData.userAvatar // הוסף את זה
+        userAvatar: commentData.userAvatar
       });
       
-      // תיקון: החזר את הנתונים בתוך data
       return { 
         success: true, 
         data: response.data.data || response.data 
